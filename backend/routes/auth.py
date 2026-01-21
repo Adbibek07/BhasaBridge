@@ -2,18 +2,23 @@ from flask import Blueprint,request,jsonify
 from db import connect_db
 import bcrypt
 import sqlite3
+import re
 
 auth = Blueprint('auth',__name__)
 
 @auth.route('/register',methods=['POST'])
 def register():
+	name_reg = r"[A-Za-z\s\'-]{2,20}$"
 	data = request.json
 	name = data['Name']
 	email = data['Email Id']
 	password = data['Password']
 	hash_password = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode()
-	
-
+	email_reg = r'^[\w]+\@[A-Za-z]{2,10}\.[A-Za-z]+$'	
+	if not re.fullmatch(name_reg,name):
+		return jsonify({'Status':'Invalid Name syntax'}),400
+	if not re.fullmatch(email_reg,email):
+		return jsonify({'Status':'Invalid email syntax'}),400
 	try:
 		with connect_db() as db:
 			db.execute("INSERT INTO users(name,email,password) VALUES (?,?,?)",(name,email,hash_password))
@@ -32,7 +37,11 @@ def register():
 def login():
 	data = request.json
 	email = data['Email Id']
+	email_reg = r"^[\w]+\@[A-Za-z]{2,10}\.[A-Za-z]+$"	
+
 	password = data['Password']
+	if not re.fullmatch(email_reg,email):
+		return jsonify({'Status':'Invalid email syntax'}),400
 	try:
 		with connect_db() as db:
 			cursor = db.execute("SELECT id,password FROM users WHERE email=?",(email,))
