@@ -1,6 +1,7 @@
 from flask import request, jsonify
 import bcrypt
 import sqlite3
+import re
 from config.database import connect_db
 
 
@@ -13,6 +14,15 @@ def register_user():
     
     if not all([name, email, password]):
         return jsonify({'Status': 'Missing required fields'}), 400
+    
+    # Regex validation (added from team member's code)
+    name_reg = r"[A-Za-z\s\'-]{2,20}$"
+    email_reg = r'^[\w]+\@[A-Za-z]{2,10}\.[A-Za-z]+$'
+    
+    if not re.fullmatch(name_reg, name):
+        return jsonify({'Status': 'Invalid Name syntax'}), 400
+    if not re.fullmatch(email_reg, email):
+        return jsonify({'Status': 'Invalid email syntax'}), 400
     
     hash_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     
@@ -38,6 +48,11 @@ def login_user():
     
     if not all([email, password]):
         return jsonify({'Status': 'Missing required fields'}), 400
+    
+    # Regex validation for email (added from team member's code)
+    email_reg = r"^[\w]+\@[A-Za-z]{2,10}\.[A-Za-z]+$"
+    if not re.fullmatch(email_reg, email):
+        return jsonify({'Status': 'Invalid email syntax'}), 400
     
     try:
         with connect_db() as db:
