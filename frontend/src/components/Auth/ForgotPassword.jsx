@@ -23,7 +23,7 @@ const ForgotPassword = ({ onBack }) => {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/forgot-password', {
+      const res = await fetch('/api/request_reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 'Email Id': email })
@@ -32,7 +32,8 @@ const ForgotPassword = ({ onBack }) => {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Reset instructions sent to your email!');
+        setToken(data.Token);
+        setMessage(`✅ Reset Token: ${data.Token}`);
         // Move to step 2 after 2 seconds
         setTimeout(() => {
           setStep(2);
@@ -74,12 +75,12 @@ const ForgotPassword = ({ onBack }) => {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/reset-password', {
+      const res = await fetch('/api/reset_password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          token: token,
-          Password: newPassword 
+          Token: token,
+          'New Password': newPassword 
         })
       });
       
