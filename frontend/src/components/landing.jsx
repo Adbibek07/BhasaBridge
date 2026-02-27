@@ -1,18 +1,37 @@
-import React from "react";
-import NavigationBar from "./Dashboard/NavigationBar/NavigationBar";
-import "../App.css"; // optional global styles
+import { Link } from "react-router-dom";
+import "./landing.css";
 
-function LandingPage() {
+function Landing() {
   return (
-    <div>
-      {/* <NavigationBar /> */}
-      <main className="min-h-screen text-black">
-        <h1>Welcome to My App!</h1>
-        <p>This is the landing page of our React project.</p>
-        <button>Get Started</button>
+    <div className="landing-page">
+      {/* Top Right Navigation */}
+      <nav className="navbar">
+        <div className="auth-buttons">
+          <Link to="/login" className="login-link">Login</Link>
+          <Link to="/login">
+            <button className="register-btn">Register</button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Center Hero Content */}
+      <main className="hero-content">
+        <h1 className="hero-title">
+          Welcome to <span className="brand-text">BhasaBridge</span>
+        </h1>
+        <p className="hero-subtitle">
+          Learn Newari Language in a fun, structured, and interactive way.
+        </p>
+
+        <div className="cta-group">
+          <Link to="/login">
+            <button className="start-btn">Start Learning Now</button>
+          </Link>
+          <button className="curriculum-btn">View Curriculum</button>
+        </div>
       </main>
     </div>
   );
 }
 
-export default LandingPage;
+export default Landing;
