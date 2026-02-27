@@ -1,17 +1,25 @@
-import "./App.css";
-import LoginSignUp from "./components/Auth/LoginSignUp";
-import NavigationBar from "./components/Dashboard/NavigationBar/NavigationBar";
-import LandingPage from "./components/landing.jsx";
+import './App.css';
+import LoginSignUp from './components/Auth/LoginSignUp';
+import NavigationBar from './components/Dashboard/NavigationBar/NavigationBar';
 
 function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
+
   return (
     <div>
       <NavigationBar />
       {/* <LoginSignUp /> */}
-      {/* <LandingPage /> */}
     </div>
   );
 }
 
 export default App;
-  

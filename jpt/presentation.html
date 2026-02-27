@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BHASABRIDGE Presentation</title>
+    <!-- Modern academic typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* Core Presentation Styles */
+        :root {
+            --deep-blue: #002147;
+            --steel-blue: #4682B4;
+            --soft-white: #F8F9FA;
+            --accent-blue: #0056b3;
+            --text-dark: #1A1A1A;
+            --text-muted: #4A4A4A;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px 0;
+            background-color: #e2e8f0;
+            display: grid;
+            place-items: center;
+            gap: 40px;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: var(--soft-white);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 60px 80px;
+            font-family: 'Inter', sans-serif;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Academic Background Decoration */
+        .slide-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(70, 130, 180, 0.05) 0%, rgba(0, 33, 71, 0.05) 100%);
+            z-index: 0;
+            clip-path: polygon(100% 0, 0 0, 100% 100%);
+        }
+
+        .slide-container::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--deep-blue), var(--steel-blue));
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            color: var(--deep-blue);
+        }
+
+        .slide-title {
+            font-size: 44px;
+            font-weight: 700;
+            margin-bottom: 35px;
+            border-left: 8px solid var(--steel-blue);
+            padding-left: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        p,
+        li {
+            font-size: 21px;
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+
+        .subtitle {
+            font-size: 26px;
+            color: var(--steel-blue);
+            margin-top: -25px;
+            margin-bottom: 35px;
+        }
+
+        /* Layouts */
+        .content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            z-index: 1;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            height: 100%;
+            align-items: start;
+        }
+
+        .tiled-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            width: 100%;
+        }
+
+        .tile {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e1e8ed;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .tile i {
+            font-size: 45px;
+            color: var(--steel-blue);
+            margin-bottom: 15px;
+        }
+
+        /* Components */
+        .logo-placeholder {
+            height: 70px;
+            margin-bottom: 15px;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 25px;
+            left: 80px;
+            right: 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .speaker-notes {
+            display: none;
+        }
+
+        /* Visual Wrappers */
+        .image-box {
+            width: 100%;
+            height: 380px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            position: relative;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .bullet-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .bullet-list li {
+            position: relative;
+            padding-left: 35px;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .bullet-list li::before {
+            content: '\f0da';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--steel-blue);
+        }
+
+        /* Custom Specific Layouts */
+        .title-slide-layout {
+            text-align: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .title-slide-layout h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 72px;
+            margin-bottom: 10px;
+        }
+
+        .stats-box {
+            background: var(--deep-blue);
+            color: white;
+            padding: 35px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stats-number {
+            font-size: 64px;
+            font-weight: 700;
+            color: var(--steel-blue);
+        }
+
+        /* Highlight box for Backup/Code */
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            overflow: auto;
+            text-align: left;
+        }
+
+        /* Stack Items */
+        .stack-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stack-item i {
+            font-size: 60px;
+            color: var(--deep-blue);
+        }
+
+        .stack-label {
+            font-weight: 700;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Slide 1: Title Slide (UPDATED) -->
+    <div class="slide-container" id="slide1">
+        <div class="content-area title-slide-layout">
+            <div style="font-weight: bold; color: var(--deep-blue); font-size: 20px; margin-bottom: 5px;">TRIBHUVAN
+                UNIVERSITY | INSTITUTE OF ENGINEERING</div>
+            <div style="font-weight: 600; color: var(--text-muted); font-size: 18px; margin-bottom: 30px;">Khwopa
+                College of Engineering, Bhaktapur</div>
+            <h1>BHASABRIDGE</h1>
+            <p class="subtitle">A Web-Based Newari (Bhaktapur) Language Learning Platform</p>
+
+            <div
+                style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 16px; text-align: left; padding: 0 100px;">
+                <div
+                    style="background: #fff; padding: 20px; border-radius: 10px; border-left: 4px solid var(--deep-blue);">
+                    <strong>Submitted By:</strong><br>
+                    Bibek Adhikari (KCE080BCT006)<br>
+                    Prajin Manandhar (KCE080BCT022)<br>
+                    Sujal Duwal (KCE080BCT040)<br>
+                    Swarnim Shrestha (KCE080BCT045)
+                </div>
+                <div
+                    style="background: #fff; padding: 20px; border-radius: 10px; border-left: 4px solid var(--steel-blue);">
+                    <strong>Supervised By:</strong><br>
+                    Er. Sunil Banmala<br>
+                    Er. Ramesh Prajapati<br>
+                    <span style="font-size: 14px; color: #666;">Dept. of Computer Engineering</span>
+                </div>
+            </div>
+            <p style="margin-top: 30px; font-size: 16px; font-weight: bold;">January 2026</p>
+        </div>
+        <div class="footer">
+            <span>5th Semester Project Defense</span>
+            <span>Khwopa College of Engineering</span>
+            <span>Slide 1</span>
+        </div>
+    </div>
+
+    <!-- Slide 2: Introduction & Motivation -->
+    <div class="slide-container" id="slide2">
+        <h2 class="slide-title">Introduction</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <ul class="bullet-list">
+                        <li><strong>Cultural Heritage:</strong> Newari (Nepal Bhasa) is one of the oldest and most
+                            significant indigenous languages of Nepal.</li>
+                        <li><strong>Accessibility Gap:</strong> Challenges in structured digital learning resources,
+                            especially for the Bhaktapur dialect.</li>
+                        <li><strong>Digital Preservation:</strong> Need for a dedicated platform that supports
+                            systematic learning using modern web tech.</li>
+                    </ul>
+                </div>
+                <div class="image-box">
+                    <!-- Placeholder for a cultural map or language graphic -->
+                    <img src="https://images.unsplash.com/photo-1544919982-b61976f0ba43?auto=format&fit=crop&q=80&w=800"
+                        alt="Bhaktapur Heritage">
+                    <div
+                        style="position: absolute; bottom: 0; background: rgba(0,0,0,0.6); color: white; width: 100%; padding: 10px; font-size: 14px; text-align: center;">
+                        Preserving Nepal Bhasa through Digital Innovation</div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>1.1 Introduction</span>
+            <span>Bhasabridge</span>
+            <span>Slide 2</span>
+        </div>
+    </div>
+
+    <!-- Slide 3: Problem Statement -->
+    <div class="slide-container" id="slide3">
+        <h2 class="slide-title">Problem Statement</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div class="stats-box">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 60px; margin-bottom: 20px;"></i>
+                    <div class="stats-number">Critical</div>
+                    <p style="color: white; font-size: 18px;">Lack of structured, accessible, and interactive digital
+                        learning platforms.</p>
+                </div>
+                <div>
+                    <ul class="bullet-list">
+                        <li>Existing resources are informal, scattered, or limited to static textbooks.</li>
+                        <li>Absence of centralized systems makes progress tracking and consistent learning difficult.
+                        </li>
+                        <li>The language faces decline among urban youth due to lack of engaging digital tools.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>1.2 Problem Statement</span>
+            <span>Bhasabridge</span>
+            <span>Slide 3</span>
+        </div>
+    </div>
+
+    <!-- Slide 4: Objectives -->
+    <div class="slide-container" id="slide4">
+        <h2 class="slide-title">Project Objectives</h2>
+        <div class="content-area">
+            <div class="tiled-grid" style="margin-top: 50px;">
+                <div class="tile">
+                    <i class="fa-solid fa-laptop-code"></i>
+                    <h3>Platform</h3>
+                    <p>Develop a user-friendly web portal for Newari language education.</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <h3>Structure</h3>
+                    <p>Provide structured lessons, interactive exercises, and quizzes.</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-database"></i>
+                    <h3>Integrity</h3>
+                    <p>Implement a relational database for efficient progress tracking.</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>1.3 Objectives</span>
+            <span>Bhasabridge</span>
+            <span>Slide 4</span>
+        </div>
+    </div>
+
+    <!-- Slide 5: Literature Review (Approach) -->
+    <div class="slide-container" id="slide5">
+        <h2 class="slide-title">Literature Review</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <ul class="bullet-list">
+                        <li><strong>Flashcard-Based Learning:</strong> Proven technique for vocabulary acquisition and
+                            memory retention.</li>
+                        <li><strong>LMS Integration:</strong> Research shows progress tracking increases learner
+                            motivation and accountability.</li>
+                        <li><strong>Full-Stack Choice:</strong> Flask (Backend) + React (Frontend) ensures responsive
+                            interfaces and scalable logic.</li>
+                    </ul>
+                </div>
+                <div class="image-box">
+                    <img src="https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800"
+                        alt="Learning Concept">
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>Chapter 2: Literature Review</span>
+            <span>Bhasabridge</span>
+            <span>Slide 5</span>
+        </div>
+    </div>
+
+    <!-- Slide 6: System Architecture (UPDATED Stack) -->
+    <div class="slide-container" id="slide6">
+        <h2 class="slide-title">System Architecture</h2>
+        <div class="content-area">
+            <div class="two-column" style="grid-template-columns: 1.2fr 0.8fr;">
+                <div class="image-box">
+                    <img src="https://mermaid.ink/img/pako:eNptksFuwyAMhl_F8nGr9AHSXmZtt_Y-R6pEQuCSTIAI6KhV9d0H2i5NM2m-P_vD_2ALZtoqZpS7ZpArRmsHlS9UPl_0EtoK0fOqgH3lO61z5pW9p7fW0fO97U8uLreR5m6G5Xw-v7Y-r_uR-p7m8_v589L6pA9pX9_P76fWiz6kfX0v9Fv_N4OaY6m4GjYh-YV3mHkO54wNn89xR9p_fS1jU3E1X_R76Uu3h_v_06_1H4N_878"
+                        alt="Architecture Diagram" style="width: 90%;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="tile">
+                        <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 10px;">
+                            <i class="fa-brands fa-react" style="color: #61DAFB;"></i>
+                            <i class="fa-solid fa-pepper-hot" style="color: #000;"></i>
+                            <i class="fa-solid fa-database" style="color: #003B57;"></i>
+                        </div>
+                        <ul class="bullet-list" style="text-align: left; font-size: 16px;">
+                            <li><strong>Frontend:</strong> React.js</li>
+                            <li><strong>Backend:</strong> Flask (Python)</li>
+                            <li><strong>Database:</strong> SQLite</li>
+                            <li><strong>Styling:</strong> Tailwind CSS</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>6.3 System Architecture</span>
+            <span>Bhasabridge</span>
+            <span>Slide 6</span>
+        </div>
+    </div>
+
+    <!-- Slide 7: ER Diagram (UPDATED) -->
+    <div class="slide-container" id="slide7">
+        <h2 class="slide-title">Database Design (ERD)</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <ul class="bullet-list">
+                        <li><strong>User Entity:</strong> Handles auth and profile.</li>
+                        <li><strong>Lesson & Quiz:</strong> 1:N Relationship (Lessons contain Quizzes).</li>
+                        <li><strong>Question:</strong> Weak entity dependent on Quiz ID.</li>
+                        <li><strong>UserProgress:</strong> Relational bridge tracking scores and completion.</li>
+                    </ul>
+                </div>
+                <div class="image-box">
+                    <!-- Conceptual ERD Image -->
+                    <img src="https://mermaid.ink/img/pako:eNp1ksFuwyAMhl_F8nGr9AHSXmZtt_Y-R6pEQuCSTIAI6KhV9d0H2i5NM2m-P_vD_2ALZtoqZpS7ZpArRmsHlS9UPl_0EtoK0fOqgH3lO61z5pW9p7fW0fO97U8uLreR5m6G5Xw-v7Y-r_uR-p7m8_v589L6pA9pX9_P76fWiz6kfX0v9Fv_N4OaY6m4GjYh-YV3mHkO54wNn89xR9p_fS1jU3E1X_R76Uu3h_v_06_1H4N_878"
+                        alt="ERD Image">
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>6.4 ER Diagram</span>
+            <span>Bhasabridge</span>
+            <span>Slide 7</span>
+        </div>
+    </div>
+
+    <!-- Slide 8: Implementation Stack (UPDATED logos) -->
+    <div class="slide-container" id="slide8">
+        <h2 class="slide-title">The Implementation Stack</h2>
+        <div class="content-area">
+            <div class="tiled-grid" style="margin-top: 50px;">
+                <div class="tile">
+                    <i class="fa-brands fa-react" style="color: #61DAFB; font-size: 80px;"></i>
+                    <div class="stack-label">React.js</div>
+                    <p style="font-size: 14px;">Interactive UI Component Architecture</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-brands fa-python" style="color: #3776AB; font-size: 80px;"></i>
+                    <div class="stack-label">Flask</div>
+                    <p style="font-size: 14px;">Lightweight RESTful API Framework</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-server" style="color: #003B57; font-size: 80px;"></i>
+                    <div class="stack-label">SQLite</div>
+                    <p style="font-size: 14px;">Portable, Relational Data Persistence</p>
+                </div>
+            </div>
+            <div style="margin-top: 40px; display: flex; justify-content: center; gap: 30px;">
+                <div class="tile" style="padding: 10px 30px; display: flex; align-items: center; gap: 15px;">
+                    <i class="fa-brands fa-git-alt" style="color: #F05032; font-size: 30px; margin: 0;"></i>
+                    <span>GitLab (VC)</span>
+                </div>
+                <div class="tile" style="padding: 10px 30px; display: flex; align-items: center; gap: 15px;">
+                    <i class="fa-solid fa-code" style="color: #007ACC; font-size: 30px; margin: 0;"></i> <span>VS Code
+                        (IDE)</span>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>5.1 Software Requirements</span>
+            <span>Bhasabridge</span>
+            <span>Slide 8</span>
+        </div>
+    </div>
+
+    <!-- Slide 9: User Roles & Journey -->
+    <div class="slide-container" id="slide9">
+        <h2 class="slide-title">User Roles & Journey</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3>Learner Path</h3>
+                    <ul class="bullet-list">
+                        <li>Register/Login (JWT Auth).</li>
+                        <li>Browse Modules & Lessons.</li>
+                        <li>Interact with Flashcards.</li>
+                        <li>Complete Quizzes & Earn Scores.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Admin Path</h3>
+                    <ul class="bullet-list">
+                        <li>Manage User Accounts.</li>
+                        <li>CMS: Add/Edit Lesson Content.</li>
+                        <li>Question Bank Management.</li>
+                        <li>View Global Progress Trends.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>6.2 Use Case Analysis</span>
+            <span>Bhasabridge</span>
+            <span>Slide 9</span>
+        </div>
+    </div>
+
+    <!-- Slide 10: Expected Outcomes -->
+    <div class="slide-container" id="slide10">
+        <h2 class="slide-title">Expected Outcomes</h2>
+        <div class="content-area">
+            <ul class="bullet-list">
+                <li><strong>Functional Platform:</strong> A web portal with verified Bhaktapur Newari vocabulary.</li>
+                <li><strong>Data Insights:</strong> Persistence of user learning logs and leaderboard stats.</li>
+                <li><strong>Preservation Tool:</strong> A scalable repository for Nepal Bhasa cultural content.</li>
+                <li><strong>Academic Goal:</strong> Integration of DBMS (SQL) and Web App (MVC) concepts.</li>
+            </ul>
+            <div style="display: flex; justify-content: center; margin-top: 30px;">
+                <div class="stats-box" style="width: 60%;">
+                    <h3 style="color: white; border: none; padding: 0;">"A digital bridge for future generations."</h3>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>Chapter 7: Outcomes</span>
+            <span>Bhasabridge</span>
+            <span>Slide 10</span>
+        </div>
+    </div>
+
+    <!-- Slide 11: Conclusion & Future -->
+    <div class="slide-container" id="slide15" style="background-color: var(--deep-blue); color: white;">
+        <div class="content-area title-slide-layout">
+            <h2 style="color: white; font-size: 60px;">Preserving Heritage<br>Through Innovation</h2>
+            <p style="color: var(--steel-blue); margin-top: 15px; font-size: 22px;">BhasaBridge: The Digital Gateway to
+                Nepal Bhasa</p>
+
+            <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                <div class="tile" style="background: rgba(255,255,255,0.1); color: white; border: none;">
+                    <i class="fa-solid fa-microphone-lines" style="color: var(--steel-blue);"></i>
+                    <p style="color: white; font-size: 16px;">Future: Audio Guides</p>
+                </div>
+                <div class="tile" style="background: rgba(255,255,255,0.1); color: white; border: none;">
+                    <i class="fa-solid fa-mobile-screen" style="color: var(--steel-blue);"></i>
+                    <p style="color: white; font-size: 16px;">Future: Mobile App</p>
+                </div>
+                <div class="tile" style="background: rgba(255,255,255,0.1); color: white; border: none;">
+                    <i class="fa-solid fa-brain" style="color: var(--steel-blue);"></i>
+                    <p style="color: white; font-size: 16px;">Future: AI Tutors</p>
+                </div>
+            </div>
+
+            <h3 style="color: white; margin-top: 50px; font-size: 32px;">Thank You! Any Questions?</h3>
+        </div>
+        <div class="footer" style="color: #aaa; border-top: 1px solid #444;">
+            <span>Conclusion</span>
+            <span>KCE080BCT (Group 02)</span>
+            <span>Slide 11</span>
+        </div>
+    </div>
+
+    <!-- BACKUP SLIDES -->
+
+    <!-- Backup A: Database Schema -->
+    <div class="slide-container" id="backupA">
+        <h2 class="slide-title">Backup: SQLite Schema</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div class="code-block">
+                    -- Core Schema for BhasaBridge
+                    CREATE TABLE Users (
+                    id INTEGER PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE,
+                    password_hash TEXT,
+                    role VARCHAR(10) -- 'admin'/'user'
+                    );
+
+                    CREATE TABLE Progress (
+                    id INTEGER PRIMARY KEY,
+                    user_id INT,
+                    lesson_id INT,
+                    score FLOAT,
+                    FOREIGN KEY(user_id) REFERENCES Users(id)
+                    );
+                </div>
+                <div>
+                    <ul class="bullet-list" style="font-size: 18px;">
+                        <li><strong>ACID Compliance:</strong> Ensured by SQLite engine.</li>
+                        <li><strong>Scalability:</strong> Ready for migration to PostgreSQL.</li>
+                        <li><strong>Authentication:</strong> JWT-based tokens integrated with Flask-SQLAlchemy.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>Appendix A: Database</span>
+            <span>Bhasabridge</span>
+            <span>Backup</span>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -48,6 +48,13 @@
     align-items: center;
     border-radius: 10px;
     background-color: #5bbac6;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+}
+
+.navlinks:hover {
+    opacity: 0.9;
 }
 
 .navlinks.selected{

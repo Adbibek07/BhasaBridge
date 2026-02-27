@@ -1,7 +1,442 @@
 .lessons-container {
-    padding: 20px;
+  padding: 40px 60px;
+  width: calc(100% - 368px);
+  margin-left: 368px;
+  min-height: 100vh;
+  background: #f5f5f5;
+  box-sizing: border-box;
 }
 
-.lessons-container h2 {
-    color: #4c00b0;
+.curriculum-header {
+  text-align: center;
+  margin-bottom: 50px;
 }
+
+.curriculum-header h1 {
+  font-size: 36px;
+  margin-bottom: 10px;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.curriculum-header p {
+  color: #6c757d;
+  font-size: 18px;
+}
+
+.lessons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.lesson-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 24px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.lesson-card:hover {
+  border-color: #103562;
+  box-shadow: 0 4px 12px rgba(16, 53, 98, 0.1);
+  transform: translateY(-2px);
+}
+
+.lesson-number {
+  color: #103562;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lesson-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 22px;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.lesson-card p {
+  color: #6c757d;
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.lesson-card button {
+  background: #103562;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.3s ease;
+  width: 100%;
+}
+
+.lesson-card button:hover {
+  background: #0d2847;
+}
+
+/* Lesson Detail View */
+.lesson-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 24px 60px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  margin: -40px -60px 40px -60px;
+}
+
+.lesson-header>button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  color: #1a1a2e;
+  transition: color 0.3s ease;
+}
+
+.lesson-header>button:hover {
+  color: #103562;
+}
+
+.lesson-header>div:nth-child(2) {
+  flex: 1;
+}
+
+.lesson-header p {
+  margin: 0 0 8px 0;
+  color: #6c757d;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 600;
+}
+
+.lesson-header h2 {
+  margin: 0;
+  font-size: 28px;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.hover-word {
+  text-decoration: underline;
+  cursor: pointer;
+  color: #d4a574;
+  font-weight: 500;
+}
+
+.hover-word:hover {
+  background-color: rgba(212, 165, 116, 0.1);
+}
+
+.tooltip {
+  position: fixed;
+  background: #2d3748;
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 9999 !important;
+  min-width: 160px;
+  max-width: 200px;
+  display: block;
+  pointer-events: none;
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tooltip-content strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff !important;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.tooltip-content p {
+  margin: 0 !important;
+  font-size: 14px;
+  color: #ffffff !important;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.tooltip-content .click-hint {
+  color: #fbbf24 !important;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 4px;
+  margin-bottom: 0;
+  letter-spacing: 0.8px;
+  opacity: 1 !important;
+}
+
+.tabs {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.tabs button {
+  background: none;
+  border: none;
+  padding: 12px 0;
+  cursor: pointer;
+  font-size: 16px;
+  color: #6c757d;
+  position: relative;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.tabs button:hover {
+  color: #1a1a2e;
+}
+
+.tabs button.active {
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.tabs button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -25px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #103562;
+  border-radius: 2px;
+}
+
+/* Content */
+.lesson-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.reading-content {
+  background: white;
+  padding: 48px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.reading-content p {
+  font-size: 19px;
+  line-height: 1.9;
+  margin-bottom: 48px;
+  color: #2d3748;
+}
+
+.reading-content button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  float: right;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.reading-content button:hover {
+  background: #218838;
+}
+
+.exercises-content {
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.exercises-content h3 {
+  margin: 0 0 24px 0;
+  font-size: 24px;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.exercise-item {
+  background: #f8f9fa;
+  padding: 24px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border-left: 4px solid #103562;
+}
+
+.exercise-item p {
+  margin: 8px 0;
+  font-size: 16px;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+.exercise-item p strong {
+  color: #103562;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .lessons-container {
+    padding: 20px;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .lesson-header {
+    flex-direction: column;
+    padding: 20px;
+    margin: -20px -20px 20px -20px;
+  }
+
+  .tabs {
+    gap: 20px;
+  }
+
+  .lessons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-content {
+    padding: 24px;
+  }
+}
+
+/* ...existing code... */
+
+/* Exercise Styles */
+.exercises-content h3 {
+  font-size: 24px;
+  color: #1a1a2e;
+  margin-bottom: 24px;
+}
+
+.exercise-item {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.question-text {
+  font-size: 18px;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.question-text strong {
+  color: #103562;
+  margin-right: 8px;
+}
+
+.option-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.option-label:hover {
+  border-color: #103562;
+  background: #f8f9fa;
+}
+
+.option-label input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  cursor: pointer;
+  accent-color: #103562;
+}
+
+.option-label input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
+.option-label span {
+  flex: 1;
+  font-size: 16px;
+  color: #1a1a2e;
+}
+
+.correct-badge {
+  margin-left: auto;
+  background: #28a745;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.incorrect-badge {
+  margin-left: auto;
+  background: #dc3545;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.option-label:has(input:checked) {
+  border-color: #103562;
+  background: #f0f4ff;
+}
+
+.option-label:has(.correct-badge) {
+  border-color: #28a745;
+  background: #d4edda;
+}
+
+.option-label:has(.incorrect-badge) {
+  border-color: #dc3545;
+  background: #f8d7da;
+}
+
+.exercises-content > button {
+  margin-top: 24px;
+  width: 100%;
+  max-width: 300px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ...existing code... */
