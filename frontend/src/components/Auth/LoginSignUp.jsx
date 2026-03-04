@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import "./LoginSignUp.css";
 import ForgotPassword from "./ForgotPassword";
 import Logo from "../NavigationBar/bhasabridge_logo.png";
-
 import user_icon from "./person.png";
 import email_icon from "./email.png";
 import password_icon from "./password.png";
@@ -40,9 +39,10 @@ const LoginSignUp = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 201) {
-        setMessage("Registered successfully.");
+        setMessage("Registered successfully! Please login.");
         setAction("Login");
         setPassword("");
+        setName("");
       } else if (res.status === 409) {
         setMessage("User already registered.");
       } else {
@@ -71,13 +71,12 @@ const LoginSignUp = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 200) {
-        setMessage("Login successful.");
-        localStorage.setItem(
-          "username",
-          data.Username || data.name || name || email,
-        );
-        // Redirect to dashboard
-        setTimeout(() => navigate("/"), 500);
+        // Save username and token to localStorage
+        localStorage.setItem("username", data.Username || data.name || email);
+        localStorage.setItem("token", data.token || data.Token || "");
+        setMessage("Login successful! Redirecting...");
+        // ✅ Fixed: Navigate to /dashboard instead of /
+        setTimeout(() => navigate("/dashboard"), 500);
       } else if (res.status === 401) {
         setMessage("Invalid credentials.");
       } else {
@@ -90,7 +89,6 @@ const LoginSignUp = () => {
     }
   };
 
-  // If forgot password is active, show that component
   if (showForgotPassword) {
     return (
       <ForgotPassword
@@ -116,15 +114,22 @@ const LoginSignUp = () => {
           <div className="text">{action}</div>
           <div className="underline"></div>
         </div>
+
         {message && (
-          <div style={{ color: "#0d4e82", textAlign: "center", marginTop: 10 }}>
+          <div
+            style={{
+              color: message.includes("successful") ? "green" : "#0d4e82",
+              textAlign: "center",
+              marginTop: 10,
+              fontWeight: "500",
+            }}
+          >
             {message}
           </div>
         )}
+
         <div className="inputs">
-          {action === "Login" ? (
-            <div></div>
-          ) : (
+          {action === "Sign Up" && (
             <div className="input">
               <img src={user_icon} alt="" />
               <input
@@ -154,18 +159,19 @@ const LoginSignUp = () => {
             />
           </div>
         </div>
-        {action === "Sign Up" ? (
-          <div></div>
-        ) : (
+
+        {action === "Login" && (
           <div className="forgot-password">
             Lost Password?{" "}
             <span onClick={() => setShowForgotPassword(true)}>Click Here!</span>
           </div>
         )}
+
         <div className="submit-container">
           <div
             className={action === "Login" ? "submit gray" : "submit"}
             onClick={() => {
+              if (loading) return;
               action === "Sign Up" ? submitSignUp() : setAction("Sign Up");
             }}
             style={{
@@ -173,11 +179,12 @@ const LoginSignUp = () => {
               pointerEvents: loading ? "none" : "auto",
             }}
           >
-            Sign Up
+            {loading && action === "Sign Up" ? "Loading..." : "Sign Up"}
           </div>
           <div
             className={action === "Sign Up" ? "submit gray" : "submit"}
             onClick={() => {
+              if (loading) return;
               action === "Login" ? submitLogin() : setAction("Login");
             }}
             style={{
@@ -185,7 +192,7 @@ const LoginSignUp = () => {
               pointerEvents: loading ? "none" : "auto",
             }}
           >
-            Login
+            {loading && action === "Login" ? "Loading..." : "Login"}
           </div>
         </div>
       </div>
