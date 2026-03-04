@@ -1,7 +1,7 @@
 .lessons-container {
   padding: 40px 60px;
-  width: calc(100% - 368px);
-  margin-left: 368px;
+  width: calc(100% - 20%);
+  margin-left: 20%;
   min-height: 100vh;
   background: #f5f5f5;
   box-sizing: border-box;

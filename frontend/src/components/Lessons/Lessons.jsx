@@ -1,183 +1,160 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Lessons.css";
 
+const LEVELS = ["easy", "intermediate", "hard"];
+
+const LEVEL_META = {
+  easy: {
+    label: "Beginner",
+    description: "Basic greetings, numbers, and everyday words.",
+    color: "#28a745",
+  },
+  intermediate: {
+    label: "Intermediate",
+    description: "Shopping, introductions, and common sentences.",
+    color: "#fd7e14",
+  },
+  hard: {
+    label: "Advanced",
+    description: "Travel, time, bargaining, and complex phrases.",
+    color: "#dc3545",
+  },
+};
+
 const Lessons = () => {
-  // State to track which lesson is selected (null = show curriculum)
-  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [activeTab, setActiveTab] = useState("words");
+  const [lessons, setLessons] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // State to track which tab is active (reading or exercises)
-  const [activeTab, setActiveTab] = useState("reading");
+  // Fetch lessons when a level is selected
+  useEffect(() => {
+    if (!selectedLevel) return;
 
-  const [hoveredWord, setHoveredWord] = useState(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+    const fetchLessons = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(
+          `/api/lessons?level=${selectedLevel}&limit=100`,
+          { credentials: "include" }
+        );
+        if (!res.ok) throw new Error("Failed to fetch lessons");
+        const data = await res.json();
+        setLessons(data);
+      } catch (e) {
+        setError("Could not load lessons. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+    fetchLessons();
+  }, [selectedLevel]);
 
-  const handleWordHover = (e, word, translation) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const scrollX = window.scrollX || window.pageXOffset;
-    const scrollY = window.scrollY || window.pageYOffset;
-    setHoveredWord({ word, translation });
-    setTooltipPos({
-      x: rect.left + scrollX + rect.width / 2 - 80,
-      y: rect.bottom + scrollY + 10,
-    });
-  };
+  const words = lessons.filter((l) => l.item_type === "word");
+  const sentences = lessons.filter((l) => l.item_type === "sentence");
 
-  const lessons = [
-    {
-      id: 1,
-      number: 1,
-      title: "Basic Greetings",
-      description: "Learn how to greet people in Bhaktapur Newari.",
-      content: {
-        reading:
-          "When you meet someone in Bhaktapur, you say Jwajalapa. It is a polite greeting. If you want to ask 'How are you?', you say Chhu du khabar?. When leaving, you might say Subhay.",
-        exercises: [
-          {
-            id: 1,
-            question: "What is the common greeting in Bhaktapur?",
-            options: ["Jwajalapa", "Subhay", "Khwopa"],
-            correctAnswer: 0,
-          },
-          {
-            id: 2,
-            question: "What does 'Subhay' mean?",
-            options: ["Hello", "Thank you", "GoodBye"],
-            correctAnswer: 2,
-          },
-        ],
-      },
-    },
-  ];
-
-  const HoverWord = ({ children, translation }) => (
-    <span
-      className="hover-word"
-      onMouseEnter={(e) => handleWordHover(e, children, translation)}
-      onMouseLeave={() => setHoveredWord(null)}
-    >
-      {children}
-    </span>
-  );
-
-  const currentLesson = selectedLesson
-    ? lessons.find((l) => l.id === selectedLesson)
-    : null;
-
-  // If a lesson is selected, show lesson detail view
-  if (currentLesson) {
+  // ─── Lesson Detail View ───────────────────────────────────────────────────
+  if (selectedLevel) {
+    const meta = LEVEL_META[selectedLevel];
     return (
       <div className="lessons-container">
-        {/* Header with back button and tabs */}
+        {/* Header */}
         <div className="lesson-header">
-          <button onClick={() => setSelectedLesson(null)}>← Back</button>
+          <button onClick={() => { setSelectedLevel(null); setLessons([]); }}>
+            ←
+          </button>
           <div>
-            <p>LESSON {currentLesson.number}</p>
-            <h2>{currentLesson.title}</h2>
-          </div>
-
-          <div className="tabs">
-            <button
-              className={activeTab === "reading" ? "active" : ""}
-              onClick={() => setActiveTab("reading")}
-            >
-              Reading
-            </button>
-            <button
-              className={activeTab === "exercises" ? "active" : ""}
-              onClick={() => setActiveTab("exercises")}
-            >
-              Exercises
-            </button>
+            <p style={{ color: meta.color, fontWeight: 600, marginBottom: 4 }}>
+              {meta.label} Level
+            </p>
+            <h2>{selectedLevel.charAt(0).toUpperCase() + selectedLevel.slice(1)} Lessons</h2>
+            <p>{meta.description}</p>
           </div>
         </div>
 
-        {/* Content area */}
+        {/* Tabs */}
+        <div className="tabs">
+          <button
+            className={activeTab === "words" ? "active" : ""}
+            onClick={() => setActiveTab("words")}
+          >
+            Words ({words.length})
+          </button>
+          <button
+            className={activeTab === "sentences" ? "active" : ""}
+            onClick={() => setActiveTab("sentences")}
+          >
+            Sentences ({sentences.length})
+          </button>
+        </div>
+
+        {/* Content */}
         <div className="lesson-content">
-          {activeTab === "reading" ? (
+          {loading && (
+            <p style={{ textAlign: "center", color: "#888", marginTop: 40 }}>
+              Loading lessons...
+            </p>
+          )}
+          {error && (
+            <p style={{ textAlign: "center", color: "#dc3545", marginTop: 40 }}>
+              {error}
+            </p>
+          )}
+          {!loading && !error && (
             <div className="reading-content">
-              <p>
-                When you meet someone in Bhaktapur, you say
-                <HoverWord translation="Hello/Namaste">Jwajalapa</HoverWord>. It
-                is a polite greeting. If you want to ask 'How are you?', you say
-                <HoverWord translation="How are you?">
-                  Chhu du khabar?
-                </HoverWord>
-                . When leaving, you might say{" "}
-                <HoverWord translation="Goodbye">Subhay</HoverWord>.
-              </p>
-              {hoveredWord && (
+              {(activeTab === "words" ? words : sentences).map((item) => (
                 <div
-                  className="tooltip"
+                  key={item.id}
                   style={{
-                    top: tooltipPos.y + "px",
-                    left: tooltipPos.x + "px",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    alignItems: "center",
+                    padding: "14px 20px",
+                    marginBottom: "10px",
+                    borderRadius: "10px",
+                    background: "white",
+                    border: "1px solid #e0e0e0",
+                    gap: "10px",
                   }}
                 >
-                  <div className="tooltip-content">
-                    <strong>{hoveredWord.translation}</strong>
-                    <p>{hoveredWord.word}</p>
-                    <p className="click-hint">CLICK FOR DETAILS</p>
-                  </div>
-                </div>
-              )}
-              <button onClick={() => setActiveTab("exercises")}>
-                Continue to Exercises →
-              </button>
-            </div>
-          ) : (
-            <div className="exercises-content">
-              <h3>Practice Exercises</h3>
-              {currentLesson.content.exercises.map((ex) => (
-                <div key={ex.id} className="exercise-item">
-                  <p className="question-text">
-                    <strong>{ex.id}.</strong> {ex.question}
-                  </p>
-                  <div className="option-container">
-                    {ex.options.map((options, index) => (
-                      <label key={index} className="option-label">
-                        <input
-                          type="radio"
-                          name={`question-${ex.id}`}
-                          value={index}
-                          checked={selectedAnswers[ex.id] === index}
-                          onChange={() =>
-                            setSelectedAnswers({
-                              ...selectedAnswers,
-                              [ex.id]: index,
-                            })
-                          }
-                          disabled={submitted}
-                        />
-                        <span>{options}</span>
-                        {submitted && index === ex.correctAnswer && (
-                          <span className="correct-badge">✓</span>
-                        )}
-                        {submitted &&
-                          selectedAnswers[ex.id] === index &&
-                          index !== ex.correctAnswer && (
-                            <span className="incorrect-badge">✗</span>
-                          )}
-                      </label>
-                    ))}
-                  </div>
+                  {/* English */}
+                  <span style={{ fontWeight: 600, color: "#1a1a2e", fontSize: "15px" }}>
+                    {item.english_text}
+                  </span>
+
+                  {/* Newari */}
+                  <span
+                    style={{
+                      fontSize: "18px",
+                      color: "#103562",
+                      fontWeight: 600,
+                      textAlign: "center",
+                    }}
+                  >
+                    {item.newari_text}
+                  </span>
+
+                  {/* Romanized */}
+                  <span
+                    style={{
+                      color: "#6c757d",
+                      fontSize: "14px",
+                      fontStyle: "italic",
+                      textAlign: "right",
+                    }}
+                  >
+                    {item.romanized_text || "—"}
+                  </span>
                 </div>
               ))}
-              {!submitted ? (
-                <button onClick={() => setSubmitted(true)}>
-                  Check Answers
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setSelectedAnswers({});
-                  }}
-                >
-                  Try Again
-                </button>
+
+              {!loading && (activeTab === "words" ? words : sentences).length === 0 && (
+                <p style={{ textAlign: "center", color: "#888", marginTop: 40 }}>
+                  No {activeTab} found for this level.
+                </p>
               )}
             </div>
           )}
@@ -186,7 +163,7 @@ const Lessons = () => {
     );
   }
 
-  // Otherwise, show curriculum view
+  // ─── Curriculum View ──────────────────────────────────────────────────────
   return (
     <div className="lessons-container">
       <div className="curriculum-header">
@@ -195,16 +172,58 @@ const Lessons = () => {
       </div>
 
       <div className="lessons-grid">
-        {lessons.map((lesson) => (
-          <div key={lesson.id} className="lesson-card">
-            <div className="lesson-number">Lesson {lesson.number}</div>
-            <h3>{lesson.title}</h3>
-            <p>{lesson.description}</p>
-            <button onClick={() => setSelectedLesson(lesson.id)}>
-              Start Lesson
-            </button>
-          </div>
-        ))}
+        {LEVELS.map((level, index) => {
+          const meta = LEVEL_META[level];
+          return (
+            <div key={level} className="lesson-card">
+              <div className="lesson-number" style={{ color: meta.color }}>
+                Lesson {index + 1}
+              </div>
+              <h3>
+                {level.charAt(0).toUpperCase() + level.slice(1)} —{" "}
+                {meta.label}
+              </h3>
+              <p>{meta.description}</p>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginBottom: "16px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    background: "#f0f4ff",
+                    color: "#103562",
+                    padding: "4px 10px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  Words & Sentences
+                </span>
+                <span
+                  style={{
+                    background: "#f0f4ff",
+                    color: meta.color,
+                    padding: "4px 10px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {meta.label}
+                </span>
+              </div>
+              <button onClick={() => { setSelectedLevel(level); setActiveTab("words"); }}>
+                Start Lesson
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
