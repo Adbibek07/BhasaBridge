@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "./bhasabridge_logo.png";
 import "./NavigationBar.css";
 import {
@@ -10,28 +10,19 @@ import {
 } from "lucide-react";
 
 const navLinks = [
-  {
-    name: "Dashboard",
-    icon: LayoutDashboard,
-    path: "/",
-  },
-  {
-    name: "Lesson",
-    icon: LucideLibrary,
-    path: "/lessons",
-  },
-  {
-    name: "Quiz",
-    icon: BookCheck,
-    path: "/quiz",
-  },
+  { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { name: "Lesson", icon: LucideLibrary, path: "/lessons" },
+  { name: "Quiz", icon: BookCheck, path: "/quiz" },
 ];
 
 function NavigationBar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem("username");
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   return (
@@ -52,15 +43,17 @@ function NavigationBar() {
             className={`navlinks ${location.pathname === item.path ? "selected" : ""}`}
           >
             <item.icon />
-            <span>{item?.name}</span>
+            <span>{item.name}</span>
           </Link>
         ))}
       </div>
+
+      {/* ✅ Logout button pinned to bottom */}
       <div className="nav-footer">
-        <Link to="/login" className="navlinks" onClick={handleLogout}>
-          <LogOut />
+        <button className="logout-btn" onClick={handleLogout}>
+          <LogOut size={20} />
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </div>
   );

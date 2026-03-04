@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginSignUp from './components/Auth/LoginSignUp';
 import NavigationBar from './components/NavigationBar/NavigationBar';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -23,8 +23,9 @@ function AppContent() {
     <div>
       {!isLoginPage && <NavigationBar />}
       <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} /> {/* 👈 Add this */}
         <Route
-          path="/"
+          path="/dashboard"   
           element={
             <ProtectedRoute>
               <Dashboard />
@@ -48,6 +49,7 @@ function AppContent() {
           }
         />
         <Route path="/login" element={<LoginSignUp />} />
+        <Route path="*" element={<Navigate to="/login" replace />} /> {/* 👈 Catch all */}
       </Routes>
     </div>
   );

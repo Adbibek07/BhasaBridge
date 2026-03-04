@@ -9,6 +9,7 @@ dist/
 build/
 cookies.txt
 # Virtual environment
+.venv
 venv/
 env/
 ENV/
