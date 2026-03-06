@@ -1,5 +1,5 @@
 .quiz-container {
-    padding: 0;
+    padding-top: 60px;
     width: calc(100% - 368px);
     margin-left: 368px;
     min-height: 100vh;

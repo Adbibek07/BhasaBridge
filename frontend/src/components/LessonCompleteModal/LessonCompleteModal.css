@@ -1,0 +1,180 @@
+/* Overlay */
+.lcm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: lcm-fade-in 0.2s ease;
+}
+
+@keyframes lcm-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Card */
+.lcm-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px 36px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    animation: lcm-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes lcm-pop {
+    from {
+        transform: scale(0.6);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.lcm-trophy {
+    font-size: 4rem;
+    line-height: 1;
+    margin-bottom: 12px;
+    animation: lcm-bounce 0.8s ease 0.2s both;
+}
+
+@keyframes lcm-bounce {
+    0% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-18px);
+    }
+
+    70% {
+        transform: translateY(-8px);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+.lcm-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 6px 0;
+}
+
+.lcm-subtitle {
+    color: #6c757d;
+    margin: 0 0 24px 0;
+    font-size: 0.95rem;
+}
+
+/* Stats row */
+.lcm-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+    gap: 8px;
+}
+
+.lcm-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 12px 16px;
+    flex: 1;
+}
+
+.lcm-stat-icon {
+    font-size: 1.4rem;
+}
+
+.lcm-stat-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lcm-stat-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #103562;
+}
+
+/* Bonus badge */
+.lcm-bonus {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border: 1px solid #ffc107;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+}
+
+/* Achievements */
+.lcm-achievements {
+    background: #f0f4ff;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.lcm-ach-title {
+    font-weight: 700;
+    color: #103562;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+}
+
+.lcm-ach-item {
+    font-size: 0.9rem;
+    color: #1a1a2e;
+    padding: 4px 0;
+    text-transform: capitalize;
+}
+
+/* Button */
+.lcm-btn {
+    background: #58cc02;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 40px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s, transform 0.1s;
+    font-family: inherit;
+}
+
+.lcm-btn:hover {
+    background: #46a400;
+    transform: translateY(-1px);
+}
+
+.lcm-btn:active {
+    transform: translateY(0);
+}

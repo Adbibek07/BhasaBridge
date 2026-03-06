@@ -1,0 +1,76 @@
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.sb-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Streak */
+.sb-streak .sb-icon {
+    font-size: 1.3rem;
+}
+
+.sb-streak .sb-value {
+    font-weight: 700;
+    color: #ff6b35;
+    font-size: 1rem;
+}
+
+/* Hearts */
+.sb-hearts {
+    gap: 2px;
+}
+
+.sb-heart {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.sb-heart.empty {
+    filter: grayscale(1) opacity(0.4);
+}
+
+/* XP bar */
+.sb-xp {
+    flex: 1;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.sb-level-badge {
+    background: #1cb0f6;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sb-xp-bar {
+    flex: 1;
+    height: 8px;
+    background: #e5e5e5;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 60px;
+}
+
+.sb-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #58cc02, #89e219);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.sb-xp-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #103562;
+    white-space: nowrap;
+}

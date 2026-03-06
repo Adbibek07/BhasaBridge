@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./LoginSignUp.css";
 import ForgotPassword from "./ForgotPassword";
 import Logo from "../NavigationBar/bhasabridge_logo.png";
@@ -9,7 +9,9 @@ import password_icon from "./password.png";
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
-  const [action, setAction] = useState("Sign Up");
+  const location = useLocation();
+  const initialTab = location.state?.tab === "signup" ? "Sign Up" : "Login";
+  const [action, setAction] = useState(initialTab);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,10 +41,31 @@ const LoginSignUp = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 201) {
-        setMessage("Registered successfully! Please login.");
-        setAction("Login");
-        setPassword("");
-        setName("");
+        // Auto-login after successful registration
+        const loginRes = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ "Email Id": email, Password: password }),
+        });
+        const loginData = await loginRes.json().catch(() => ({}));
+        if (loginRes.status === 200) {
+          localStorage.setItem(
+            "username",
+            loginData.Username || loginData.name || email,
+          );
+          localStorage.setItem(
+            "token",
+            loginData.token || loginData.Token || "",
+          );
+          setMessage("Registered successfully! Redirecting...");
+          setTimeout(() => navigate("/dashboard"), 500);
+        } else {
+          setMessage("Registered! Please log in.");
+          setAction("Login");
+          setPassword("");
+          setName("");
+        }
       } else if (res.status === 409) {
         setMessage("User already registered.");
       } else {

@@ -1,0 +1,211 @@
+.landing-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #103562 0%, #1a5276 50%, #5bbac6 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Navbar ── */
+.landing-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 3rem;
+}
+
+.landing-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+}
+
+.landing-logo img {
+    height: 48px;
+}
+
+.landing-logo span {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.landing-logo span em {
+    font-style: normal;
+    color: #5bbac6;
+}
+
+.landing-nav-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.landing-nav-btn:hover {
+    background: #fff;
+    color: #103562;
+}
+
+/* ── Hero Section ── */
+.landing-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    gap: 1.5rem;
+}
+
+.landing-badge {
+    background: rgba(91, 186, 198, 0.25);
+    border: 1px solid rgba(91, 186, 198, 0.6);
+    color: #cef3f7;
+    padding: 0.4rem 1.2rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.landing-hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    max-width: 800px;
+    margin: 0;
+}
+
+.landing-hero h1 span {
+    color: #5bbac6;
+}
+
+.landing-hero p {
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 580px;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.landing-cta-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.landing-btn-primary {
+    background: #fff;
+    color: #103562;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 0.85rem 2.5rem;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.landing-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+.landing-btn-secondary {
+    background: transparent;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.85rem 2.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.landing-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* ── Feature Cards ── */
+.landing-features {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 0 2rem 4rem;
+}
+
+.landing-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 1.8rem 2rem;
+    width: 220px;
+    text-align: center;
+    color: #fff;
+    transition: transform 0.3s ease;
+}
+
+.landing-card:hover {
+    transform: translateY(-4px);
+}
+
+.landing-card-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.8rem;
+}
+
+.landing-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem;
+}
+
+.landing-card p {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Footer ── */
+.landing-footer {
+    text-align: center;
+    padding: 1.2rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .landing-nav {
+        padding: 1rem 1.5rem;
+    }
+
+    .landing-features {
+        padding: 0 1rem 3rem;
+    }
+
+    .landing-card {
+        width: 160px;
+        padding: 1.2rem;
+    }
+}

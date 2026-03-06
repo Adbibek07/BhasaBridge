@@ -190,6 +190,64 @@ def init_db():
     )
     """)
 
+    # ── Gamification columns on users ──────────────────────────────────────
+    gamification_columns = [
+        ("xp",            "INT DEFAULT 0"),
+        ("streak",        "INT DEFAULT 0"),
+        ("hearts",        "INT DEFAULT 5"),
+        ("level",         "INT DEFAULT 1"),
+        ("last_activity", "DATE NULL"),
+    ]
+    for col_name, col_def in gamification_columns:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
+        except pymysql.err.OperationalError as e:
+            if e.args[0] == 1060:   # Duplicate column – already exists
+                pass
+            else:
+                raise
+
+    # ── Achievements master table ──────────────────────────────────────────
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS achievements (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        icon        VARCHAR(50) DEFAULT '🏅',
+        xp_reward   INT DEFAULT 0
+    )
+    """)
+
+    # ── User achievements (earned) ─────────────────────────────────────────
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_achievements (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        user_id        INT NOT NULL,
+        achievement_id INT NOT NULL,
+        earned_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_ua_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY uq_user_achievement (user_id, achievement_id)
+    )
+    """)
+
+    # ── Seed achievements ──────────────────────────────────────────────────
+    seed_achievements = [
+        ("first_lesson",   "Complete your first lesson",        "🌟", 10),
+        ("streak_3",       "Maintain a 3-day streak",           "🔥", 15),
+        ("streak_7",       "Maintain a 7-day streak",           "🔥", 30),
+        ("streak_30",      "Maintain a 30-day streak",          "🔥", 100),
+        ("xp_100",         "Earn 100 XP",                       "⚡", 10),
+        ("xp_500",         "Earn 500 XP",                       "💎", 25),
+        ("perfect_lesson", "Complete a lesson with no mistakes","✨", 20),
+        ("level_5",        "Reach Level 5",                     "🏆", 50),
+    ]
+    for name, desc, icon, reward in seed_achievements:
+        cursor.execute("""
+            INSERT INTO achievements (name, description, icon, xp_reward)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE description=VALUES(description)
+        """, (name, desc, icon, reward))
+
     _seed_lessons(cursor)
     _seed_quizzes(cursor)
     conn.commit()

@@ -1,5 +1,5 @@
 .dashboard-container {
-    padding: 40px 60px;
+    padding: 80px 60px 40px 60px;
     margin-left: calc(20% + 60px);
     width: calc(80% - 40px);
     min-height: 100vh;
@@ -179,4 +179,106 @@
     transform: scale(1.08);
     box-shadow: 0 8px 24px rgba(255, 111, 0, 0.5);
     background: linear-gradient(135deg, #ffaa20 0%, #ff8020 100%);
+}
+
+/* XP Progress bar (inside stat card) */
+.xp-progress-wrap {
+    margin-top: 8px;
+}
+
+.xp-progress-bar {
+    height: 8px;
+    background: #e5e5e5;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.xp-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #58cc02, #89e219);
+    border-radius: 4px;
+    transition: width 0.7s ease;
+}
+
+.xp-progress-label {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+/* Leaderboard section */
+.leaderboard-section {
+    margin-top: 48px;
+    max-width: 700px;
+}
+
+.leaderboard-section h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 20px;
+}
+
+.leaderboard-list {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.leaderboard-row:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-row:hover {
+    background: #f8f9fa;
+}
+
+.leaderboard-row.me {
+    background: #f0f4ff;
+    border-left: 4px solid #103562;
+}
+
+.lb-rank {
+    font-size: 1.3rem;
+    min-width: 36px;
+}
+
+.lb-name {
+    flex: 1;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.lb-xp {
+    font-weight: 700;
+    color: #103562;
+    min-width: 70px;
+    text-align: right;
+}
+
+.lb-streak {
+    font-size: 0.85rem;
+    color: #ff6b35;
+    min-width: 50px;
+    text-align: right;
+}
+
+.lb-level {
+    background: #1cb0f6;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
