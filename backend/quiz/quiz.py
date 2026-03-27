@@ -211,6 +211,7 @@ def delete_lesson_admin(lesson_id):
 def list_quizzes():
     level = request.args.get('level')
     lesson_id = request.args.get('lesson_id')
+    lesson_ids_raw = request.args.get('lesson_ids')  # comma-separated list of lesson IDs
     limit = int(request.args.get('limit', 50))
     offset = int(request.args.get('offset', 0))
 
@@ -222,6 +223,15 @@ def list_quizzes():
     if lesson_id:
         filters.append('q.lesson_id=%s')
         params.append(int(lesson_id))
+    if lesson_ids_raw:
+        try:
+            lesson_ids = [int(x.strip()) for x in lesson_ids_raw.split(',') if x.strip().isdigit()]
+            if lesson_ids:
+                placeholders = ','.join(['%s'] * len(lesson_ids))
+                filters.append(f'q.lesson_id IN ({placeholders})')
+                params.extend(lesson_ids)
+        except ValueError:
+            pass
 
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ''
 

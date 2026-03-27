@@ -15,7 +15,9 @@ load_dotenv()
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'change-me-in-production'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app)
 
 init_mail(app)
@@ -32,6 +34,6 @@ app.register_blueprint(progress,     url_prefix='/api')
 app.register_blueprint(gamification, url_prefix='/api')
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
 
 

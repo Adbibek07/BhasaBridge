@@ -1,6 +1,5 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import Logo from "./bhasabridge_logo.png";
 import "./NavigationBar.css";
 import {
   LayoutDashboard,
@@ -28,7 +27,7 @@ function NavigationBar() {
   return (
     <div className="left-sidebar">
       <div className="logo-div">
-        <img src={Logo} alt="Logo" className="Logo" />
+        <img src="/bhasabridge_logo.png" alt="Logo" className="Logo" />
         <span>
           <span style={{ color: "#103562" }}>Bhasa</span>
           <span style={{ color: "#5bbac6" }}>Bridge</span>

@@ -1,4 +1,4 @@
-SOURCE_URL = 'https://www.easynepalityping.com/useful-newari-phrases'
+﻿SOURCE_URL = 'https://www.easynepalityping.com/useful-newari-phrases'
 
 LESSON_SEED_DATA = [
     {'level': 'easy', 'item_type': 'word', 'english_text': 'Hello', 'newari_text': 'ज्वजलपा।', 'romanized_text': 'jvajalapa.'},
@@ -68,6 +68,7 @@ QUIZ_SEED_DATA = [
     # ─── EASY ───────────────────────────────────────────────────────────────
     {
         'level': 'easy',
+        'linked_english_text': 'Hello',
         'question_text': 'What is the Newari word for Hello?',
         'option_a': 'ज्वजलपा।',
         'option_b': 'सुभाय्।',
@@ -78,6 +79,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Thank you',
         'question_text': 'What does सुभाय्। mean in English?',
         'option_a': 'Please',
         'option_b': 'Thank you',
@@ -88,6 +90,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Price',
         'question_text': 'Choose the Newari word for Price.',
         'option_a': 'ध्यबा',
         'option_b': 'भाः',
@@ -98,6 +101,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Five',
         'question_text': 'What is the Newari number for Five?',
         'option_a': '५ - न्यागू',
         'option_b': '२ - निगू',
@@ -108,6 +112,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Please',
         'question_text': 'What is the Newari word for "Please"?',
         'option_a': 'ज्वजलपा।',
         'option_b': 'मज्यु।',
@@ -118,6 +123,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'No',
         'question_text': 'What does मज्यु। mean?',
         'option_a': 'Yes',
         'option_b': 'Hello',
@@ -128,6 +134,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Yes',
         'question_text': 'What is the Newari word for "Yes"?',
         'option_a': 'ख।',
         'option_b': 'मज्यु।',
@@ -138,6 +145,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Good morning',
         'question_text': 'What does भिं सुथ। mean?',
         'option_a': 'Good night',
         'option_b': 'Good evening',
@@ -148,6 +156,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'I',
         'question_text': 'What is the Newari word for "I"?',
         'option_a': 'छित',
         'option_b': 'जिं',
@@ -158,6 +167,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'How much is it?',
         'question_text': 'What does थ्व गुलि खः ? mean?',
         'option_a': 'Where are you going?',
         'option_b': 'How are you?',
@@ -168,6 +178,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'Money',
         'question_text': 'Which is the Newari word for "Money"?',
         'option_a': 'भाः',
         'option_b': 'ध्यबा',
@@ -178,6 +189,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'easy',
+        'linked_english_text': 'One',
         'question_text': 'What is १ in Newari?',
         'option_a': 'निगू',
         'option_b': 'स्वंगू',
@@ -190,6 +202,7 @@ QUIZ_SEED_DATA = [
     # ─── INTERMEDIATE ────────────────────────────────────────────────────────
     {
         'level': 'intermediate',
+        'linked_english_text': 'Can you give me a discount?',
         'question_text': 'Which sentence asks for a discount?',
         'option_a': 'छिं जित: छ्यापं बियादी फै ला ?',
         'option_b': 'थ्व गुलि खः ?',
@@ -200,6 +213,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'Could I have a receipt, please?',
         'question_text': 'What is the meaning of जिके रसिद बियादी फै ला ?',
         'option_a': 'Please write the price',
         'option_b': 'Could I have a receipt, please?',
@@ -210,6 +224,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'One hundred',
         'question_text': 'Choose the Newari form of One hundred.',
         'option_a': '५० - न्यासः',
         'option_b': '१० - दस',
@@ -220,6 +235,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'That is too expensive.',
         'question_text': 'Which sentence means "That is too expensive"?',
         'option_a': 'व तसकं थिके ।',
         'option_b': 'छी गुली बर्स?',
@@ -230,6 +246,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'What is your name?',
         'question_text': 'What does छङु ना छु ख? mean?',
         'option_a': 'How old are you?',
         'option_b': 'Where are you from?',
@@ -240,6 +257,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'Today',
         'question_text': 'What is the Newari word for "Today"?',
         'option_a': 'कने',
         'option_b': 'म्हिग',
@@ -250,6 +268,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'Tomorrow',
         'question_text': 'What is the Newari word for "Tomorrow"?',
         'option_a': 'थौं',
         'option_b': 'कने',
@@ -260,6 +279,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'I am a student.',
         'question_text': 'What does जि छम्ह ब्वनामि खः । mean?',
         'option_a': 'I am a teacher.',
         'option_b': 'I am from India.',
@@ -270,6 +290,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'Fifty',
         'question_text': 'What is ५० in Newari?',
         'option_a': 'नीदँ',
         'option_b': 'सच्छि',
@@ -280,6 +301,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'Where are you going?',
         'question_text': 'Which sentence means "Where are you going?"?',
         'option_a': 'छ गन वनेत्यना ?',
         'option_b': 'छि थन च्वनादी ला ?',
@@ -290,6 +312,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'intermediate',
+        'linked_english_text': 'What are you doing?',
         'question_text': 'What does छु याना चोव्ना? mean?',
         'option_a': 'Where are you from?',
         'option_b': 'What are you doing?',
@@ -302,6 +325,7 @@ QUIZ_SEED_DATA = [
     # ─── HARD ────────────────────────────────────────────────────────────────
     {
         'level': 'hard',
+        'linked_english_text': 'Please turn on the meter.',
         'question_text': 'What does मिटर चायेकादिसँ । mean?',
         'option_a': 'Turn on AC',
         'option_b': 'Take me to airport',
@@ -312,6 +336,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'How long will it take to get to the airport?',
         'question_text': 'Choose the sentence for asking travel time to airport.',
         'option_a': 'एयरपोर्ट थ्यंकेत गुलि ई काइ ?',
         'option_b': 'गुगु इलय् ?',
@@ -322,6 +347,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'Century',
         'question_text': 'Which one means Century?',
         'option_a': 'शताब्दी',
         'option_b': 'मगागु',
@@ -332,6 +358,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'Within a Week',
         'question_text': 'Within a Week in Newari is:',
         'option_a': 'मगागु',
         'option_b': 'छवाःया दुने',
@@ -342,6 +369,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'What time is it?',
         'question_text': 'What does आः गुलि ई जुल ? mean?',
         'option_a': 'At what time?',
         'option_b': 'What time is it?',
@@ -352,6 +380,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'At what time?',
         'question_text': 'What does गुगु इलय् ? mean?',
         'option_a': 'What time is it?',
         'option_b': 'How long will it take?',
@@ -362,6 +391,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'Can you lower the price?',
         'question_text': 'Which sentence means "Can you lower the price?"?',
         'option_a': 'छिं भाः च्वयादी फै ला ?',
         'option_b': 'छिं भाः क्वकाये फै ला ?',
@@ -372,6 +402,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'Please take me to this address.',
         'question_text': 'What does जितः थुगु थासय् यंकादिसँ । mean?',
         'option_a': 'Please turn on the meter',
         'option_b': 'Take me to this address',
@@ -382,6 +413,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'More',
         'question_text': 'What is the Newari word for "More"?',
         'option_a': 'मगागु',
         'option_b': 'शताब्दी',
@@ -392,6 +424,7 @@ QUIZ_SEED_DATA = [
     },
     {
         'level': 'hard',
+        'linked_english_text': 'Less',
         'question_text': 'What is the Newari word for "Less"?',
         'option_a': 'योक्को',
         'option_b': 'मगागु',

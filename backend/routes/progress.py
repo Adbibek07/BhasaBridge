@@ -13,6 +13,10 @@ GET /api/progress/me                     – overall stats
 GET /api/progress/me/levels              – per-level breakdown
 GET /api/progress/me/history             – paginated session history
 
+Public
+------
+GET /api/leaderboard                     – top users by XP (public, login required)
+
 Admin analytics
 ---------------
 GET /api/admin/analytics                 – all users' stats summary
@@ -53,6 +57,35 @@ def _get_or_create_level_progress(cursor, user_id, level):
             (user_id, level),
         )
     return cursor.lastrowid
+
+
+# ---------------------------------------------------------------------------
+# GET /api/leaderboard  – public top-users board (login required)
+# ---------------------------------------------------------------------------
+@progress.route('/leaderboard', methods=['GET'])
+@login_required
+def leaderboard():
+    """Top 10 users ranked by XP, with streak and level."""
+    conn = connect_db()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute('USE Bhasabridge')
+        cursor.execute(
+            '''
+            SELECT name,
+                   COALESCE(xp, 0)     AS xp,
+                   COALESCE(streak, 0) AS streak,
+                   COALESCE(level, 1)  AS level
+            FROM users
+            ORDER BY xp DESC, streak DESC
+            LIMIT 10
+            '''
+        )
+        rows = cursor.fetchall()
+        return jsonify(rows), 200
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ---------------------------------------------------------------------------

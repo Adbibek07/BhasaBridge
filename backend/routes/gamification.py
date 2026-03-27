@@ -72,12 +72,71 @@ def complete_lesson():
     restore_hearts(user_id)
     result["hearts"] = MAX_HEARTS
 
+    # Track per-level lesson XP in user_level_progress
+    xp_earned = result.get("xp_earned", 0)
+    conn, cursor = _db()
+    try:
+        cursor.execute(
+            "SELECT id FROM user_level_progress WHERE user_id=%s AND level=%s",
+            (user_id, level),
+        )
+        if cursor.fetchone():
+            cursor.execute(
+                """
+                UPDATE user_level_progress
+                SET lesson_xp_earned  = lesson_xp_earned + %s,
+                    lessons_completed = lessons_completed + 1,
+                    last_played_at    = CURRENT_TIMESTAMP
+                WHERE user_id=%s AND level=%s
+                """,
+                (xp_earned, user_id, level),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO user_level_progress
+                    (user_id, level, lesson_xp_earned, lessons_completed, last_played_at)
+                VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                """,
+                (user_id, level, xp_earned),
+            )
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
     # Unlock first-lesson achievement
     unlock_achievement(user_id, "first_lesson")
     if mistakes == 0:
         unlock_achievement(user_id, "perfect_lesson")
 
     return jsonify(result)
+
+
+# ── GET /api/lesson/level-stats ───────────────────────────────────────────────
+@gamification.route("/lesson/level-stats", methods=["GET"])
+@login_required
+def lesson_level_stats():
+    """Return per-level lesson XP and completion count for the logged-in user."""
+    user_id = session.get("user_id")
+    conn, cursor = _db()
+    try:
+        cursor.execute(
+            """
+            SELECT level,
+                   COALESCE(lesson_xp_earned,  0) AS lesson_xp_earned,
+                   COALESCE(lessons_completed, 0) AS lessons_completed
+            FROM user_level_progress
+            WHERE user_id = %s
+            """,
+            (user_id,),
+        )
+        rows = cursor.fetchall()
+        result = {r["level"]: r for r in rows}
+        return jsonify(result)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ── POST /api/lesson/wrong_answer ─────────────────────────────────────────────

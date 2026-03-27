@@ -11,8 +11,10 @@
 }
 
 /* Streak */
-.sb-streak .sb-icon {
-    font-size: 1.3rem;
+.sb-streak .sb-flame-icon {
+    color: #ff6b35;
+    fill: #ff6b35;
+    flex-shrink: 0;
 }
 
 .sb-streak .sb-value {
@@ -27,12 +29,13 @@
 }
 
 .sb-heart {
-    font-size: 0.9rem;
     line-height: 1;
+    display: flex;
+    align-items: center;
 }
 
 .sb-heart.empty {
-    filter: grayscale(1) opacity(0.4);
+    opacity: 0.25;
 }
 
 /* XP bar */

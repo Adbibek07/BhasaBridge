@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Flame, Heart } from "lucide-react";
 import "./StatsBar.css";
 
 const MAX_HEARTS = 5;
@@ -39,7 +40,7 @@ const StatsBar = ({ refreshTrigger = 0 }) => {
     <div className="stats-bar">
       {/* Streak */}
       <div className="sb-item sb-streak" title={`${streak}-day streak`}>
-        <span className="sb-icon">🔥</span>
+        <Flame size={18} className="sb-flame-icon" />
         <span className="sb-value">{streak}</span>
       </div>
 
@@ -50,7 +51,11 @@ const StatsBar = ({ refreshTrigger = 0 }) => {
       >
         {Array.from({ length: MAX_HEARTS }).map((_, i) => (
           <span key={i} className={`sb-heart ${i < hearts ? "full" : "empty"}`}>
-            {i < hearts ? "❤️" : "🖤"}
+            <Heart
+              size={14}
+              fill={i < hearts ? "#ff4d6d" : "none"}
+              strokeWidth={i < hearts ? 0 : 1.5}
+            />
           </span>
         ))}
       </div>

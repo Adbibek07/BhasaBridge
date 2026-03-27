@@ -37,13 +37,13 @@ const Quiz = () => {
   useEffect(() => {
     if (!selectedDifficulty) return;
 
-      const fetchQuiz = async () => {
+    const fetchQuiz = async () => {
       setLoading(true);
       setError("");
       try {
         const res = await fetch(
           `/api/quizzes?level=${selectedDifficulty}&limit=100`,
-          { credentials: "include" }
+          { credentials: "include" },
         );
         if (!res.ok) throw new Error("Failed to fetch quiz");
         const data = await res.json();
@@ -57,11 +57,8 @@ const Quiz = () => {
           return true;
         });
 
-        console.log(`Fetched: ${data.length}, After dedup: ${unique.length}`); // 👈 check console
-
         const shuffled = unique.sort(() => Math.random() - 0.5);
         setQuestions(shuffled);
-
       } catch (e) {
         setError("Could not load quiz. Please try again.");
       } finally {

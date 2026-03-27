@@ -35,17 +35,25 @@ def _seed_lessons(cursor):
 
 def _seed_quizzes(cursor):
     for quiz in QUIZ_SEED_DATA:
-        cursor.execute(
-            """
-            SELECT id FROM lesson
-            WHERE level=%s
-            ORDER BY id ASC
-            LIMIT 1
-            """,
-            (quiz['level'],),
-        )
-        lesson_row = cursor.fetchone()
-        lesson_id = lesson_row['id'] if lesson_row else None
+        lesson_id = None
+        # Try to find the specific lesson item this question is about
+        linked = quiz.get('linked_english_text')
+        if linked:
+            cursor.execute(
+                "SELECT id FROM lesson WHERE level=%s AND english_text=%s LIMIT 1",
+                (quiz['level'], linked),
+            )
+            row = cursor.fetchone()
+            if row:
+                lesson_id = row['id']
+        # Fallback: first lesson item of that level
+        if lesson_id is None:
+            cursor.execute(
+                "SELECT id FROM lesson WHERE level=%s ORDER BY id ASC LIMIT 1",
+                (quiz['level'],),
+            )
+            lesson_row = cursor.fetchone()
+            lesson_id = lesson_row['id'] if lesson_row else None
 
         cursor.execute(
             """
@@ -189,6 +197,20 @@ def init_db():
         INDEX idx_progress_user (user_id)
     )
     """)
+
+    # ── Lesson XP columns on user_level_progress ──────────────────────────
+    lesson_progress_columns = [
+        ("lesson_xp_earned",  "INT DEFAULT 0"),
+        ("lessons_completed", "INT DEFAULT 0"),
+    ]
+    for col_name, col_def in lesson_progress_columns:
+        try:
+            cursor.execute(f"ALTER TABLE user_level_progress ADD COLUMN {col_name} {col_def}")
+        except pymysql.err.OperationalError as e:
+            if e.args[0] == 1060:
+                pass
+            else:
+                raise
 
     # ── Gamification columns on users ──────────────────────────────────────
     gamification_columns = [

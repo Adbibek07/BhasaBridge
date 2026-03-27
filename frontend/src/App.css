@@ -7,15 +7,13 @@
   top: 0;
   left: 20%;
   right: 0;
-  height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #dde1e7;
+  height: 56px;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0 30px;
   z-index: 99;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .App-logo {

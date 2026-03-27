@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { Heart } from "lucide-react";
 import "./Lessons.css";
 import LessonCompleteModal from "../LessonCompleteModal/LessonCompleteModal";
 
@@ -23,11 +24,10 @@ const LEVEL_META = {
 };
 
 const MAX_HEARTS = 5;
-const PRACTICE_QUESTION_COUNT = 5;
 const OPTION_KEYS = ["A", "B", "C", "D"];
 
 // â”€â”€ Practice (mini-quiz) sub-component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const PracticeSection = ({ level, onComplete }) => {
+const PracticeSection = ({ level, lessonIds, onComplete }) => {
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -37,25 +37,30 @@ const PracticeSection = ({ level, onComplete }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showFeedback, setShowFeedback] = useState(null); // "correct" | "wrong"
-  const [finished, setFinished] = useState(false);
 
-  // Load quiz questions for this level
+  // Load quiz questions for this level, filtered to the specific lesson items shown
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(
-          `/api/quizzes?level=${level}&limit=${PRACTICE_QUESTION_COUNT * 3}`,
-          { credentials: "include" },
-        );
+        // Build query: filter by level; if we have lesson IDs, also pass them for specificity
+        let url = `/api/quizzes?level=${level}&limit=50`;
+        if (lessonIds && lessonIds.length > 0) {
+          url += `&lesson_ids=${lessonIds.join(",")}`;
+        }
+        const res = await fetch(url, { credentials: "include" });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        // Shuffle and take PRACTICE_QUESTION_COUNT
-        const shuffled = data
-          .sort(() => Math.random() - 0.5)
-          .slice(0, PRACTICE_QUESTION_COUNT);
-        setQuestions(shuffled);
+        // Deduplicate by question text, then shuffle
+        const seen = new Set();
+        const unique = data.filter((q) => {
+          const key = q.question_text.trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setQuestions(unique.sort(() => Math.random() - 0.5));
       } catch {
         setError("Could not load practice questions. Please try again.");
       } finally {
@@ -63,7 +68,7 @@ const PracticeSection = ({ level, onComplete }) => {
       }
     };
     load();
-  }, [level]);
+  }, [level, lessonIds]);
 
   const handleSelect = async (key) => {
     if (answered) return;
@@ -101,7 +106,6 @@ const PracticeSection = ({ level, onComplete }) => {
     const nextIndex = current + 1;
     if (nextIndex >= questions.length) {
       // Lesson complete — call API
-      setFinished(true);
       try {
         const res = await fetch("/api/lesson/complete", {
           method: "POST",
@@ -164,7 +168,12 @@ const PracticeSection = ({ level, onComplete }) => {
               key={i}
               className={`ph-heart ${i < hearts ? "full" : "empty"}`}
             >
-              {i < hearts ? "❤️" : "🖤"}
+              <Heart
+                size={16}
+                fill={i < hearts ? "#ff4d6d" : "none"}
+                stroke={i < hearts ? "#ff4d6d" : "#bbb"}
+                strokeWidth={1.5}
+              />
             </span>
           ))}
         </div>
@@ -185,8 +194,8 @@ const PracticeSection = ({ level, onComplete }) => {
       {showFeedback && (
         <div className={`practice-feedback ${showFeedback}`}>
           {showFeedback === "correct"
-            ? "✅ Correct! Great job!"
-            : `❌ Incorrect! The answer was ${q.correct_option}: ${optionMap[q.correct_option]}`}
+            ? "Correct! Great job!"
+            : `Incorrect! The answer was ${q.correct_option}: ${optionMap[q.correct_option]}`}
         </div>
       )}
 
@@ -239,14 +248,14 @@ const PracticeSection = ({ level, onComplete }) => {
 
           {/* Explanation */}
           {answered && q.explanation && (
-            <div className="practice-explanation">💡 {q.explanation}</div>
+            <div className="practice-explanation">{q.explanation}</div>
           )}
         </div>
 
         {answered && (
           <button className="practice-next-btn" onClick={handleNext}>
             {current + 1 === questions.length
-              ? "Finish Lesson 🎉"
+              ? "Finish Lesson"
               : "Next Question →"}
           </button>
         )}
@@ -255,7 +264,7 @@ const PracticeSection = ({ level, onComplete }) => {
   );
 };
 
-// â”€â”€ Main Lessons component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main Lessons component ───────────────────────────────────────────────────
 const Lessons = () => {
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [activeTab, setActiveTab] = useState("words");
@@ -264,6 +273,15 @@ const Lessons = () => {
   const [error, setError] = useState("");
   const [completeResult, setCompleteResult] = useState(null);
   const [statsRefresh, setStatsRefresh] = useState(0);
+  const [levelStats, setLevelStats] = useState({});
+
+  // Fetch per-level XP stats for curriculum cards
+  useEffect(() => {
+    fetch("/api/lesson/level-stats", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => setLevelStats(data))
+      .catch(() => {});
+  }, [statsRefresh]);
 
   // Fetch lessons when a level is selected
   useEffect(() => {
@@ -358,7 +376,7 @@ const Lessons = () => {
             className={activeTab === "practice" ? "active" : ""}
             onClick={() => setActiveTab("practice")}
           >
-            🎮 Practice
+            Practice
           </button>
         </div>
 
@@ -368,6 +386,7 @@ const Lessons = () => {
             <PracticeSection
               key={selectedLevel}
               level={selectedLevel}
+              lessonIds={lessons.map((l) => l.id)}
               onComplete={handlePracticeComplete}
             />
           ) : (
@@ -458,7 +477,7 @@ const Lessons = () => {
                       <div className="practice-prompt-banner">
                         <span>Ready to test yourself?</span>
                         <button onClick={() => setActiveTab("practice")}>
-                          🎮 Start Practice
+                          Start Practice
                         </button>
                       </div>
                     )}
@@ -482,6 +501,9 @@ const Lessons = () => {
       <div className="lessons-grid">
         {LEVELS.map((level, index) => {
           const meta = LEVEL_META[level];
+          const stats = levelStats[level] || {};
+          const xpEarned = stats.lesson_xp_earned || 0;
+          const completions = stats.lessons_completed || 0;
           return (
             <div key={level} className="lesson-card">
               <div className="lesson-number" style={{ color: meta.color }}>
@@ -524,18 +546,34 @@ const Lessons = () => {
                 >
                   {meta.label}
                 </span>
-                <span
-                  style={{
-                    background: "#e8f5e9",
-                    color: "#28a745",
-                    padding: "4px 10px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                  }}
-                >
-                  🎮 Practice
-                </span>
+                {xpEarned > 0 && (
+                  <span
+                    style={{
+                      background: "#fff8e1",
+                      color: "#e6a817",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {xpEarned} XP earned
+                  </span>
+                )}
+                {completions > 0 && (
+                  <span
+                    style={{
+                      background: "#e8f5e9",
+                      color: "#28a745",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {completions}x completed
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -543,7 +581,7 @@ const Lessons = () => {
                   setActiveTab("words");
                 }}
               >
-                Start Lesson
+                {completions > 0 ? "Practice Again" : "Start Lesson"}
               </button>
             </div>
           );

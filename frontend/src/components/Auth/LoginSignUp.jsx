@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./LoginSignUp.css";
 import ForgotPassword from "./ForgotPassword";
-import Logo from "../NavigationBar/bhasabridge_logo.png";
+
 import user_icon from "./person.png";
 import email_icon from "./email.png";
 import password_icon from "./password.png";
@@ -126,7 +126,11 @@ const LoginSignUp = () => {
   return (
     <div className="login-page-wrapper">
       <div className="logo-section">
-        <img src={Logo} alt="BhasaBridge Logo" className="login-logo" />
+        <img
+          src="/bhasabridge_logo.png"
+          alt="BhasaBridge Logo"
+          className="login-logo"
+        />
         <div className="logo-text">
           <span style={{ color: "#103562" }}>Bhasa</span>
           <span style={{ color: "#5bbac6" }}>Bridge</span>
