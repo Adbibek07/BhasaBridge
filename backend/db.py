@@ -12,8 +12,10 @@ def connect_db():
 
 
 def _seed_lessons(cursor):
+    seed_keys = []
     for item in LESSON_SEED_DATA:
         unit_meta = infer_unit_metadata(item['level'], item['english_text'])
+        seed_keys.append((item['level'], item['item_type'], item['english_text']))
         cursor.execute(
             """
             INSERT INTO lesson (
@@ -42,6 +44,20 @@ def _seed_lessons(cursor):
                 item.get('romanized_text'),
                 SOURCE_URL,
             ),
+        )
+
+    # Keep curated lessons only for this source URL.
+    # This prevents older low-quality seeded rows from lingering across schema updates.
+    if seed_keys:
+        placeholders = ','.join(['(%s,%s,%s)'] * len(seed_keys))
+        flat_params = [x for row in seed_keys for x in row]
+        cursor.execute(
+            f'''
+            DELETE FROM lesson
+            WHERE source_url = %s
+              AND (level, item_type, english_text) NOT IN ({placeholders})
+            ''',
+            [SOURCE_URL] + flat_params,
         )
 
 
