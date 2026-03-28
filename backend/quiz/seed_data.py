@@ -1,5 +1,100 @@
 ﻿SOURCE_URL = 'https://www.easynepalityping.com/useful-newari-phrases'
 
+UNIT_METADATA_BY_LEVEL = {
+    'easy': [
+        {
+            'unit_key': 'greetings',
+            'unit_title': 'Greetings',
+            'usage_note': 'Use these in everyday greetings and polite responses.',
+            'keywords': ['hello', 'thank you', 'please', 'yes', 'no', 'good morning', 'good evening', 'good night', 'how are you'],
+        },
+        {
+            'unit_key': 'pronouns',
+            'unit_title': 'Pronouns',
+            'usage_note': 'These are core pronouns used in most beginner conversations.',
+            'keywords': [' i', 'you', 'and you'],
+        },
+        {
+            'unit_key': 'numbers',
+            'unit_title': 'Numbers',
+            'usage_note': 'Number words are essential for money, time, and shopping.',
+            'keywords': ['one', 'two', 'three', 'four', 'five', 'ten'],
+        },
+        {
+            'unit_key': 'shopping',
+            'unit_title': 'Shopping',
+            'usage_note': 'Practice these when asking cost, bags, and basic market terms.',
+            'keywords': ['how much', 'bag', 'money', 'price'],
+        },
+    ],
+    'intermediate': [
+        {
+            'unit_key': 'introductions',
+            'unit_title': 'Introductions',
+            'usage_note': 'Introduce yourself and ask personal basics naturally.',
+            'keywords': ['name', 'from', 'how old', 'student', 'live here'],
+        },
+        {
+            'unit_key': 'shopping',
+            'unit_title': 'Shopping',
+            'usage_note': 'Use these lines for bargaining, receipts, and discounts.',
+            'keywords': ['supermarket', 'souvenirs', 'price', 'receipt', 'expensive', 'discount', 'money back'],
+        },
+        {
+            'unit_key': 'time',
+            'unit_title': 'Time',
+            'usage_note': 'Time vocabulary helps you discuss dates and schedules.',
+            'keywords': ['today', 'tomorrow', 'yesterday', 'now', 'twenty', 'fifty', 'one hundred', 'one thousand'],
+        },
+    ],
+    'hard': [
+        {
+            'unit_key': 'travel',
+            'unit_title': 'Travel',
+            'usage_note': 'Use this set for transport, tickets, and route directions.',
+            'keywords': ['ticket', 'address', 'airport', 'meter'],
+        },
+        {
+            'unit_key': 'time',
+            'unit_title': 'Time',
+            'usage_note': 'These forms are useful for asking exact time and durations.',
+            'keywords': ['what time', 'at what time', 'week', 'century'],
+        },
+        {
+            'unit_key': 'shopping',
+            'unit_title': 'Shopping',
+            'usage_note': 'Advanced marketplace language for payments and negotiation.',
+            'keywords': ['lower the price', 'credit', 'debit', 'more', 'less'],
+        },
+    ],
+}
+
+
+def infer_unit_metadata(level, english_text):
+    text = f" {str(english_text or '').lower()} "
+    units = UNIT_METADATA_BY_LEVEL.get(level, [])
+
+    for index, unit in enumerate(units, start=1):
+        if any(keyword in text for keyword in unit['keywords']):
+            return {
+                'unit_key': unit['unit_key'],
+                'unit_title': unit['unit_title'],
+                'sort_order': index,
+                'usage_note': unit['usage_note'],
+            }
+
+    fallback = units[0] if units else {
+        'unit_key': 'core',
+        'unit_title': 'Core Phrases',
+        'usage_note': 'Foundational phrases for daily communication.',
+    }
+    return {
+        'unit_key': fallback['unit_key'],
+        'unit_title': fallback['unit_title'],
+        'sort_order': 1,
+        'usage_note': fallback['usage_note'],
+    }
+
 LESSON_SEED_DATA = [
     {'level': 'easy', 'item_type': 'word', 'english_text': 'Hello', 'newari_text': 'ज्वजलपा।', 'romanized_text': 'jvajalapa.'},
     {'level': 'easy', 'item_type': 'word', 'english_text': 'Thank you', 'newari_text': 'सुभाय्।', 'romanized_text': 'subhaay.'},

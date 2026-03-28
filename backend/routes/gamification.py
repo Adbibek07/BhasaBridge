@@ -64,6 +64,7 @@ def complete_lesson():
     data     = request.json or {}
     mistakes = int(data.get("mistakes", 0))
     level    = data.get("level", "easy")
+    unit_key = data.get("unit_key")
 
     xp_type = "perfect_lesson" if mistakes == 0 else "lesson_complete"
     result  = award_xp(user_id, xp_type)
@@ -100,6 +101,58 @@ def complete_lesson():
                 """,
                 (user_id, level, xp_earned),
             )
+
+        if unit_key:
+            cursor.execute(
+                '''
+                SELECT unit_title, MIN(sort_order) AS sort_order
+                FROM lesson
+                WHERE level=%s AND unit_key=%s
+                GROUP BY unit_title
+                LIMIT 1
+                ''',
+                (level, unit_key),
+            )
+            unit_row = cursor.fetchone()
+            if unit_row:
+                cursor.execute(
+                    '''
+                    INSERT INTO user_unit_progress (user_id, level, unit_key, unit_title, is_unlocked, is_completed, mastery_score, last_activity)
+                    VALUES (%s, %s, %s, %s, 1, 1, %s, CURRENT_TIMESTAMP)
+                    ON DUPLICATE KEY UPDATE
+                        unit_title=VALUES(unit_title),
+                        is_unlocked=1,
+                        is_completed=1,
+                        mastery_score=GREATEST(mastery_score, VALUES(mastery_score)),
+                        last_activity=CURRENT_TIMESTAMP
+                    ''',
+                    (user_id, level, unit_key, unit_row['unit_title'], max(0, 100 - mistakes * 20)),
+                )
+
+                cursor.execute(
+                    '''
+                    SELECT unit_key, unit_title
+                    FROM lesson
+                    WHERE level=%s
+                    GROUP BY unit_key, unit_title
+                    ORDER BY MIN(sort_order) ASC
+                    ''',
+                    (level,),
+                )
+                ordered_units = cursor.fetchall()
+                keys = [u['unit_key'] for u in ordered_units]
+                if unit_key in keys:
+                    idx = keys.index(unit_key)
+                    if idx + 1 < len(ordered_units):
+                        nxt = ordered_units[idx + 1]
+                        cursor.execute(
+                            '''
+                            INSERT INTO user_unit_progress (user_id, level, unit_key, unit_title, is_unlocked)
+                            VALUES (%s, %s, %s, %s, 1)
+                            ON DUPLICATE KEY UPDATE unit_title=VALUES(unit_title), is_unlocked=1
+                            ''',
+                            (user_id, level, nxt['unit_key'], nxt['unit_title']),
+                        )
         conn.commit()
     finally:
         cursor.close()
@@ -144,7 +197,37 @@ def lesson_level_stats():
 @login_required
 def wrong_answer():
     user_id = session.get("user_id")
+    data = request.json or {}
+    quiz_id = data.get("quiz_id")
+    lesson_id = data.get("lesson_id")
     hearts  = deduct_heart(user_id)
+
+    conn, cursor = _db()
+    try:
+        if not lesson_id and quiz_id:
+            cursor.execute("SELECT lesson_id FROM quiz WHERE id=%s", (quiz_id,))
+            q = cursor.fetchone()
+            lesson_id = q.get("lesson_id") if q else None
+
+        if quiz_id or lesson_id:
+            cursor.execute(
+                '''
+                INSERT INTO user_review_queue (user_id, lesson_id, quiz_id, due_at, correct_streak, last_result, is_mastered)
+                VALUES (%s, %s, %s, DATE_ADD(NOW(), INTERVAL 1 DAY), 0, 'wrong', 0)
+                ON DUPLICATE KEY UPDATE
+                    lesson_id=VALUES(lesson_id),
+                    due_at=DATE_ADD(NOW(), INTERVAL 1 DAY),
+                    correct_streak=0,
+                    last_result='wrong',
+                    is_mastered=0
+                ''',
+                (user_id, lesson_id, quiz_id),
+            )
+            conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
     return jsonify({"hearts": hearts, "max_hearts": MAX_HEARTS})
 
 

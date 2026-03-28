@@ -26,6 +26,10 @@ def _validate_lesson_payload(data):
         return 'level must be easy, intermediate, or hard'
     if data['item_type'] not in VALID_ITEM_TYPES:
         return 'item_type must be word or sentence'
+    if data.get('unit_key') and len(str(data.get('unit_key')).strip()) > 64:
+        return 'unit_key must be 64 chars or fewer'
+    if data.get('unit_title') and len(str(data.get('unit_title')).strip()) > 120:
+        return 'unit_title must be 120 chars or fewer'
     return None
 
 
@@ -65,16 +69,53 @@ def list_lessons():
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute('USE Bhasabridge')
         query = f'''
-            SELECT id, level, item_type, english_text, newari_text, romanized_text, source_url, created_at, updated_at
+            SELECT id, level, item_type, unit_key, unit_title, sort_order, usage_note,
+                   english_text, newari_text, romanized_text, source_url, created_at, updated_at
             FROM lesson
             {where_clause}
-            ORDER BY FIELD(level, 'easy', 'intermediate', 'hard'), id ASC
+            ORDER BY FIELD(level, 'easy', 'intermediate', 'hard'), sort_order ASC, id ASC
             LIMIT %s OFFSET %s
         '''
         params.extend([limit, offset])
         cursor.execute(query, params)
         rows = cursor.fetchall()
         return jsonify(rows), 200
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@quiz.route('/lessons/units', methods=['GET'])
+def list_units():
+    level = request.args.get('level')
+
+    conn = connect_db()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute('USE Bhasabridge')
+
+        params = []
+        where_clause = ''
+        if level:
+            where_clause = 'WHERE level=%s'
+            params.append(level)
+
+        cursor.execute(
+            f'''
+            SELECT level,
+                   unit_key,
+                   unit_title,
+                   MIN(sort_order) AS sort_order,
+                   MAX(usage_note) AS usage_note,
+                   COUNT(*) AS total_items
+            FROM lesson
+            {where_clause}
+            GROUP BY level, unit_key, unit_title
+            ORDER BY FIELD(level, 'easy', 'intermediate', 'hard'), sort_order ASC, unit_title ASC
+            ''',
+            params,
+        )
+        return jsonify(cursor.fetchall()), 200
     finally:
         cursor.close()
         conn.close()
@@ -88,7 +129,8 @@ def get_lesson_by_id(lesson_id):
         cursor.execute('USE Bhasabridge')
         cursor.execute(
             '''
-            SELECT id, level, item_type, english_text, newari_text, romanized_text, source_url, created_at, updated_at
+            SELECT id, level, item_type, unit_key, unit_title, sort_order, usage_note,
+                   english_text, newari_text, romanized_text, source_url, created_at, updated_at
             FROM lesson
             WHERE id=%s
             ''',
@@ -120,12 +162,19 @@ def add_lesson_admin():
 
         cursor.execute(
             '''
-            INSERT INTO lesson (level, item_type, english_text, newari_text, romanized_text, source_url)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO lesson (
+                level, item_type, unit_key, unit_title, sort_order, usage_note,
+                english_text, newari_text, romanized_text, source_url
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''',
             (
                 data['level'],
                 data['item_type'],
+                (data.get('unit_key') or 'core').strip(),
+                (data.get('unit_title') or 'Core Phrases').strip(),
+                int(data.get('sort_order', 1)),
+                (data.get('usage_note') or '').strip() or None,
                 data['english_text'].strip(),
                 data['newari_text'].strip(),
                 (data.get('romanized_text') or '').strip() or None,
@@ -160,12 +209,17 @@ def update_lesson_admin(lesson_id):
         cursor.execute(
             '''
             UPDATE lesson
-            SET level=%s, item_type=%s, english_text=%s, newari_text=%s, romanized_text=%s, source_url=%s
+            SET level=%s, item_type=%s, unit_key=%s, unit_title=%s, sort_order=%s, usage_note=%s,
+                english_text=%s, newari_text=%s, romanized_text=%s, source_url=%s
             WHERE id=%s
             ''',
             (
                 data['level'],
                 data['item_type'],
+                (data.get('unit_key') or 'core').strip(),
+                (data.get('unit_title') or 'Core Phrases').strip(),
+                int(data.get('sort_order', 1)),
+                (data.get('usage_note') or '').strip() or None,
                 data['english_text'].strip(),
                 data['newari_text'].strip(),
                 (data.get('romanized_text') or '').strip() or None,
@@ -240,7 +294,8 @@ def list_quizzes():
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute('USE Bhasabridge')
         query = f'''
-            SELECT q.id, q.level, q.lesson_id, l.english_text AS lesson_english_text,
+             SELECT q.id, q.level, q.lesson_id, l.english_text AS lesson_english_text,
+                 l.newari_text AS lesson_newari_text,
                    q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
                    q.correct_option, q.explanation, q.source_url, q.created_at, q.updated_at
             FROM quiz q
@@ -266,7 +321,8 @@ def get_quiz_by_id(quiz_id):
         cursor.execute('USE Bhasabridge')
         cursor.execute(
             '''
-            SELECT q.id, q.level, q.lesson_id, l.english_text AS lesson_english_text,
+             SELECT q.id, q.level, q.lesson_id, l.english_text AS lesson_english_text,
+                 l.newari_text AS lesson_newari_text,
                    q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
                    q.correct_option, q.explanation, q.source_url, q.created_at, q.updated_at
             FROM quiz q

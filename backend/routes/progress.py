@@ -26,8 +26,10 @@ GET /api/admin/analytics/user/<user_id>  – specific user detail
 
 from flask import Blueprint, jsonify, request, session
 import pymysql
+from datetime import datetime, timedelta
 from db import connect_db
 from routes.login_required import login_required
+from gamification import award_xp
 
 progress = Blueprint('progress', __name__)
 
@@ -57,6 +59,34 @@ def _get_or_create_level_progress(cursor, user_id, level):
             (user_id, level),
         )
     return cursor.lastrowid
+
+
+def _ensure_user_unit_progress(cursor, user_id, level):
+    cursor.execute(
+        '''
+        SELECT unit_key, unit_title, MIN(sort_order) AS sort_order
+        FROM lesson
+        WHERE level=%s
+        GROUP BY unit_key, unit_title
+        ORDER BY sort_order ASC
+        ''',
+        (level,),
+    )
+    units = cursor.fetchall()
+    if not units:
+        return []
+
+    for index, unit in enumerate(units):
+        cursor.execute(
+            '''
+            INSERT INTO user_unit_progress (user_id, level, unit_key, unit_title, is_unlocked)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE unit_title=VALUES(unit_title)
+            ''',
+            (user_id, level, unit['unit_key'], unit['unit_title'], 1 if index == 0 else 0),
+        )
+
+    return units
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +180,222 @@ def start_session():
     except Exception as e:
         conn.rollback()
         return jsonify({'Status': 'Error', 'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@progress.route('/review/next', methods=['GET'])
+@login_required
+def review_next():
+    user_id = session['user_id']
+    limit = max(1, min(int(request.args.get('limit', 10)), 30))
+
+    conn = connect_db()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute('USE Bhasabridge')
+
+        cursor.execute(
+            '''
+            SELECT rq.id AS review_id,
+                   rq.quiz_id,
+                   rq.lesson_id,
+                   rq.due_at,
+                   rq.correct_streak,
+                   rq.last_result,
+                   q.level,
+                   q.question_text,
+                   q.option_a, q.option_b, q.option_c, q.option_d,
+                   q.correct_option,
+                   q.explanation,
+                   l.unit_key,
+                   l.unit_title,
+                   l.english_text,
+                   l.newari_text,
+                   l.romanized_text
+            FROM user_review_queue rq
+            LEFT JOIN quiz q ON q.id = rq.quiz_id
+            LEFT JOIN lesson l ON l.id = COALESCE(rq.lesson_id, q.lesson_id)
+            WHERE rq.user_id=%s
+              AND rq.is_mastered=0
+              AND rq.due_at <= NOW()
+            ORDER BY rq.due_at ASC
+            LIMIT %s
+            ''',
+            (user_id, limit),
+        )
+        rows = cursor.fetchall()
+        return jsonify({'count': len(rows), 'items': rows}), 200
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@progress.route('/review/submit', methods=['POST'])
+@login_required
+def review_submit():
+    user_id = session['user_id']
+    data = request.json or {}
+    review_id = data.get('review_id')
+    is_correct = bool(data.get('is_correct'))
+
+    if not review_id:
+        return jsonify({'Status': 'review_id is required'}), 400
+
+    conn = connect_db()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute('USE Bhasabridge')
+
+        cursor.execute(
+            'SELECT * FROM user_review_queue WHERE id=%s AND user_id=%s',
+            (review_id, user_id),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'Status': 'Review item not found'}), 404
+
+        current_streak = int(row.get('correct_streak') or 0)
+        was_wrong_before = row.get('last_result') == 'wrong'
+
+        if not is_correct:
+            next_due = datetime.utcnow() + timedelta(days=1)
+            cursor.execute(
+                '''
+                UPDATE user_review_queue
+                SET correct_streak=0,
+                    last_result='wrong',
+                    due_at=%s,
+                    is_mastered=0
+                WHERE id=%s
+                ''',
+                (next_due, review_id),
+            )
+            conn.commit()
+            return jsonify({'status': 'scheduled', 'next_due_days': 1, 'mastered': False}), 200
+
+        next_streak = current_streak + 1
+        if next_streak == 1:
+            next_due = datetime.utcnow() + timedelta(days=3)
+            cursor.execute(
+                '''
+                UPDATE user_review_queue
+                SET correct_streak=1,
+                    last_result='correct',
+                    due_at=%s,
+                    is_mastered=0
+                WHERE id=%s
+                ''',
+                (next_due, review_id),
+            )
+            conn.commit()
+            return jsonify({'status': 'scheduled', 'next_due_days': 3, 'mastered': False}), 200
+
+        if next_streak == 2:
+            next_due = datetime.utcnow() + timedelta(days=7)
+            cursor.execute(
+                '''
+                UPDATE user_review_queue
+                SET correct_streak=2,
+                    last_result='correct',
+                    due_at=%s,
+                    is_mastered=0
+                WHERE id=%s
+                ''',
+                (next_due, review_id),
+            )
+            conn.commit()
+            return jsonify({'status': 'scheduled', 'next_due_days': 7, 'mastered': False}), 200
+
+        cursor.execute(
+            '''
+            UPDATE user_review_queue
+            SET correct_streak=%s,
+                last_result='correct',
+                is_mastered=1,
+                due_at=DATE_ADD(NOW(), INTERVAL 365 DAY)
+            WHERE id=%s
+            ''',
+            (next_streak, review_id),
+        )
+        conn.commit()
+
+        reward = award_xp(user_id, 'quiz_complete') if was_wrong_before else {'xp_earned': 0}
+        return jsonify({
+            'status': 'mastered',
+            'mastered': True,
+            'xp_earned': reward.get('xp_earned', 0),
+            'total_xp': reward.get('total_xp'),
+            'streak': reward.get('streak'),
+        }), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'Status': 'Error', 'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@progress.route('/progress/study-guide', methods=['GET'])
+@login_required
+def study_guide():
+    user_id = session['user_id']
+    conn = connect_db()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute('USE Bhasabridge')
+
+        for lvl in VALID_LEVELS:
+            _ensure_user_unit_progress(cursor, user_id, lvl)
+        conn.commit()
+
+        cursor.execute(
+            '''
+            SELECT COUNT(*) AS review_due
+            FROM user_review_queue
+            WHERE user_id=%s AND is_mastered=0 AND due_at <= NOW()
+            ''',
+            (user_id,),
+        )
+        review_due = int((cursor.fetchone() or {}).get('review_due') or 0)
+
+        cursor.execute(
+            '''
+            SELECT l.level, l.unit_key, l.unit_title, COUNT(*) AS weak_count
+            FROM user_review_queue rq
+            LEFT JOIN quiz q ON q.id = rq.quiz_id
+            LEFT JOIN lesson l ON l.id = COALESCE(rq.lesson_id, q.lesson_id)
+            WHERE rq.user_id=%s AND rq.is_mastered=0
+            GROUP BY l.level, l.unit_key, l.unit_title
+            ORDER BY weak_count DESC
+            LIMIT 4
+            ''',
+            (user_id,),
+        )
+        weak_topics = cursor.fetchall()
+
+        cursor.execute(
+            '''
+            SELECT level, unit_key, unit_title, is_unlocked, is_completed, mastery_score, last_activity
+            FROM user_unit_progress
+            WHERE user_id=%s
+            ORDER BY FIELD(level, 'easy', 'intermediate', 'hard'), is_completed ASC, last_activity DESC
+            ''',
+            (user_id,),
+        )
+        units = cursor.fetchall()
+
+        continue_unit = next((u for u in units if u['is_unlocked'] and not u['is_completed']), None)
+        new_lesson = next((u for u in units if not u['is_unlocked']), None)
+
+        return jsonify({
+            'continue_unit': continue_unit,
+            'review_due': review_due,
+            'new_lesson': new_lesson,
+            'weak_topics': weak_topics,
+            'units': units,
+        }), 200
     finally:
         cursor.close()
         conn.close()

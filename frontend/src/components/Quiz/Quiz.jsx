@@ -324,7 +324,6 @@ const Quiz = () => {
         </div>
         <h2>{current.question_text}</h2>
 
-        {/* Options */}
         <div className="quiz-options">
           {OPTION_KEYS.map((key) => {
             let className = "quiz-option";

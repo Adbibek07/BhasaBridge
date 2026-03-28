@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [username, setUsername] = useState("");
   const [stats, setStats] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [studyGuide, setStudyGuide] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,6 +27,11 @@ const Dashboard = () => {
     fetch("/api/leaderboard", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setLeaderboard(data))
+      .catch(() => {});
+
+    fetch("/api/progress/study-guide", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setStudyGuide(data))
       .catch(() => {});
   }, []);
 
@@ -116,31 +122,84 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Up Next */}
+      {/* Study Guide */}
       <div className="up-next-section">
         <div className="up-next-header">
-          <h2>Up Next</h2>
+          <h2>Study Guide</h2>
           <button className="view-all-btn" onClick={() => navigate("/lessons")}>
             View all lessons
           </button>
         </div>
 
-        <div className="lesson-preview-card">
-          <div className="lesson-preview-content">
-            <span className="lesson-badge">
-              ⭐ LESSON 1 ·{" "}
-              {level < 3 ? "BEGINNER" : level < 6 ? "INTERMEDIATE" : "ADVANCED"}
-            </span>
-            <p className="lesson-preview-text">
-              Learn how to greet people in Bhaktapur Newari. Practice words,
-              sentences, and mini-quizzes!
-            </p>
+        <div
+          className="lesson-preview-card"
+          style={{ display: "block", padding: 28 }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 14,
+            }}
+          >
+            <div
+              className="lesson-preview-content"
+              style={{ background: "#253142", borderRadius: 14, padding: 16 }}
+            >
+              <span className="lesson-badge">Continue Unit</span>
+              <p className="lesson-preview-text" style={{ fontSize: 17 }}>
+                {studyGuide?.continue_unit
+                  ? `${studyGuide.continue_unit.unit_title} (${studyGuide.continue_unit.level})`
+                  : "Pick your next unit to continue."}
+              </p>
+            </div>
+
+            <div
+              className="lesson-preview-content"
+              style={{ background: "#253142", borderRadius: 14, padding: 16 }}
+            >
+              <span className="lesson-badge">Review Due</span>
+              <p className="lesson-preview-text" style={{ fontSize: 17 }}>
+                {studyGuide?.review_due || 0} items waiting for review
+              </p>
+            </div>
+
+            <div
+              className="lesson-preview-content"
+              style={{ background: "#253142", borderRadius: 14, padding: 16 }}
+            >
+              <span className="lesson-badge">New Lesson</span>
+              <p className="lesson-preview-text" style={{ fontSize: 17 }}>
+                {studyGuide?.new_lesson
+                  ? `${studyGuide.new_lesson.unit_title} (${studyGuide.new_lesson.level})`
+                  : "No locked units right now."}
+              </p>
+            </div>
+
+            <div
+              className="lesson-preview-content"
+              style={{ background: "#253142", borderRadius: 14, padding: 16 }}
+            >
+              <span className="lesson-badge">Weak Topics</span>
+              <p className="lesson-preview-text" style={{ fontSize: 17 }}>
+                {studyGuide?.weak_topics?.length
+                  ? studyGuide.weak_topics
+                      .map((w) => `${w.unit_title || "Core"} (${w.weak_count})`)
+                      .join(" · ")
+                  : "No weak-topic data yet."}
+              </p>
+            </div>
           </div>
           <button
             className="start-lesson-btn"
-            onClick={() => navigate("/lessons")}
+            onClick={() =>
+              navigate(studyGuide?.review_due > 0 ? "/quiz" : "/lessons")
+            }
+            style={{ marginTop: 18 }}
           >
-            Start Lesson →
+            {studyGuide?.review_due > 0
+              ? "Start Review Loop →"
+              : "Continue Curriculum →"}
           </button>
         </div>
       </div>

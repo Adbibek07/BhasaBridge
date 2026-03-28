@@ -1,6 +1,6 @@
 import pymysql
 import os
-from quiz.seed_data import LESSON_SEED_DATA, QUIZ_SEED_DATA, SOURCE_URL
+from quiz.seed_data import LESSON_SEED_DATA, QUIZ_SEED_DATA, SOURCE_URL, infer_unit_metadata
 
 def connect_db():
 	return pymysql.connect(
@@ -13,11 +13,19 @@ def connect_db():
 
 def _seed_lessons(cursor):
     for item in LESSON_SEED_DATA:
+        unit_meta = infer_unit_metadata(item['level'], item['english_text'])
         cursor.execute(
             """
-            INSERT INTO lesson (level, item_type, english_text, newari_text, romanized_text, source_url)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO lesson (
+                level, item_type, unit_key, unit_title, sort_order, usage_note,
+                english_text, newari_text, romanized_text, source_url
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
+                unit_key = VALUES(unit_key),
+                unit_title = VALUES(unit_title),
+                sort_order = VALUES(sort_order),
+                usage_note = VALUES(usage_note),
                 romanized_text = VALUES(romanized_text),
                 source_url = VALUES(source_url),
                 updated_at = CURRENT_TIMESTAMP
@@ -25,6 +33,10 @@ def _seed_lessons(cursor):
             (
                 item['level'],
                 item['item_type'],
+                item.get('unit_key', unit_meta['unit_key']),
+                item.get('unit_title', unit_meta['unit_title']),
+                int(item.get('sort_order', unit_meta['sort_order'])),
+                item.get('usage_note', unit_meta['usage_note']),
                 item['english_text'],
                 item['newari_text'],
                 item.get('romanized_text'),
@@ -111,6 +123,10 @@ def init_db():
         id INT AUTO_INCREMENT PRIMARY KEY,
         level ENUM('easy', 'intermediate', 'hard') NOT NULL,
         item_type ENUM('word', 'sentence') NOT NULL,
+        unit_key VARCHAR(64) NOT NULL DEFAULT 'core',
+        unit_title VARCHAR(120) NOT NULL DEFAULT 'Core Phrases',
+        sort_order INT NOT NULL DEFAULT 1,
+        usage_note VARCHAR(500) NULL,
         english_text VARCHAR(500) NOT NULL,
         newari_text VARCHAR(500) NOT NULL,
         english_hash CHAR(64) GENERATED ALWAYS AS (SHA2(english_text, 256)) STORED,
@@ -120,9 +136,25 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uq_lesson_unique (level, item_type, english_hash, newari_hash),
-        INDEX idx_lesson_level_type (level, item_type)
+        INDEX idx_lesson_level_type (level, item_type),
+        INDEX idx_lesson_level_unit_order (level, unit_key, sort_order, id)
     )
     """)
+
+    lesson_columns = [
+        ("unit_key", "VARCHAR(64) NOT NULL DEFAULT 'core'"),
+        ("unit_title", "VARCHAR(120) NOT NULL DEFAULT 'Core Phrases'"),
+        ("sort_order", "INT NOT NULL DEFAULT 1"),
+        ("usage_note", "VARCHAR(500) NULL"),
+    ]
+    for col_name, col_def in lesson_columns:
+        try:
+            cursor.execute(f"ALTER TABLE lesson ADD COLUMN {col_name} {col_def}")
+        except pymysql.err.OperationalError as e:
+            if e.args[0] == 1060:
+                pass
+            else:
+                raise
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS quiz (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -195,6 +227,45 @@ def init_db():
         CONSTRAINT fk_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE KEY uq_user_level (user_id, level),
         INDEX idx_progress_user (user_id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_unit_progress (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        level ENUM('easy', 'intermediate', 'hard') NOT NULL,
+        unit_key VARCHAR(64) NOT NULL,
+        unit_title VARCHAR(120) NOT NULL,
+        is_unlocked TINYINT(1) NOT NULL DEFAULT 0,
+        is_completed TINYINT(1) NOT NULL DEFAULT 0,
+        mastery_score DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+        last_activity TIMESTAMP NULL,
+        CONSTRAINT fk_uup_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY uq_user_unit (user_id, level, unit_key),
+        INDEX idx_uup_user_level (user_id, level),
+        INDEX idx_uup_unlock (user_id, is_unlocked, is_completed)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_review_queue (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        lesson_id INT NULL,
+        quiz_id INT NULL,
+        due_at DATETIME NOT NULL,
+        correct_streak INT NOT NULL DEFAULT 0,
+        last_result ENUM('correct', 'wrong') NOT NULL DEFAULT 'wrong',
+        is_mastered TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_review_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_review_lesson FOREIGN KEY (lesson_id) REFERENCES lesson(id) ON DELETE SET NULL,
+        CONSTRAINT fk_review_quiz FOREIGN KEY (quiz_id) REFERENCES quiz(id) ON DELETE SET NULL,
+        UNIQUE KEY uq_user_quiz_review (user_id, quiz_id),
+        INDEX idx_review_due (user_id, due_at, is_mastered),
+        INDEX idx_review_result (user_id, last_result)
     )
     """)
 

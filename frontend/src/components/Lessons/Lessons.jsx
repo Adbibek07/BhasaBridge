@@ -1,100 +1,244 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import "./Lessons.css";
 import LessonCompleteModal from "../LessonCompleteModal/LessonCompleteModal";
 
 const LEVELS = ["easy", "intermediate", "hard"];
+const BATCH_SIZE = 3;
+const MAX_HEARTS = 5;
+const OPTION_KEYS = ["A", "B", "C", "D"];
 
 const LEVEL_META = {
   easy: {
     label: "Beginner",
-    description: "Basic greetings, numbers, and everyday words.",
+    description:
+      "Start with greetings, numbers, and simple daily conversation.",
     color: "#28a745",
   },
   intermediate: {
     label: "Intermediate",
-    description: "Shopping, introductions, and common sentences.",
+    description:
+      "Move to practical speaking for shopping, time, and introductions.",
     color: "#fd7e14",
   },
   hard: {
     label: "Advanced",
-    description: "Travel, time, bargaining, and complex phrases.",
+    description: "Master travel, context-heavy usage, and nuanced expressions.",
     color: "#dc3545",
   },
 };
 
-const MAX_HEARTS = 5;
-const OPTION_KEYS = ["A", "B", "C", "D"];
+const normalizeText = (v) =>
+  String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s.,!?;:]+/g, " ");
 
-// â”€â”€ Practice (mini-quiz) sub-component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const PracticeSection = ({ level, lessonIds, onComplete }) => {
-  const [questions, setQuestions] = useState([]);
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [answered, setAnswered] = useState(false);
+const Lessons = () => {
+  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [selectedUnitKey, setSelectedUnitKey] = useState(null);
+  const [phase, setPhase] = useState("intro");
+
+  const [lessons, setLessons] = useState([]);
+  const [unitProgress, setUnitProgress] = useState([]);
+  const [levelStats, setLevelStats] = useState({});
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [statsRefresh, setStatsRefresh] = useState(0);
+
+  const [batchIndex, setBatchIndex] = useState(0);
+  const [recallInput, setRecallInput] = useState("");
+  const [recallFeedback, setRecallFeedback] = useState(null);
   const [mistakes, setMistakes] = useState(0);
   const [hearts, setHearts] = useState(MAX_HEARTS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showFeedback, setShowFeedback] = useState(null); // "correct" | "wrong"
 
-  // Load quiz questions for this level, filtered to the specific lesson items shown
+  const [checkpointQuestions, setCheckpointQuestions] = useState([]);
+  const [checkpointCurrent, setCheckpointCurrent] = useState(0);
+  const [checkpointSelected, setCheckpointSelected] = useState(null);
+  const [checkpointAnswered, setCheckpointAnswered] = useState(false);
+
+  const [completeResult, setCompleteResult] = useState(null);
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        // Build query: filter by level; if we have lesson IDs, also pass them for specificity
-        let url = `/api/quizzes?level=${level}&limit=50`;
-        if (lessonIds && lessonIds.length > 0) {
-          url += `&lesson_ids=${lessonIds.join(",")}`;
-        }
-        const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        // Deduplicate by question text, then shuffle
-        const seen = new Set();
-        const unique = data.filter((q) => {
-          const key = q.question_text.trim().toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        setQuestions(unique.sort(() => Math.random() - 0.5));
-      } catch {
-        setError("Could not load practice questions. Please try again.");
-      } finally {
-        setLoading(false);
+    fetch("/api/lesson/level-stats", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => setLevelStats(data || {}))
+      .catch(() => {});
+
+    fetch("/api/progress/study-guide", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => setUnitProgress(data.units || []))
+      .catch(() => {});
+  }, [statsRefresh]);
+
+  useEffect(() => {
+    if (!selectedLevel) return;
+
+    setLoading(true);
+    setError("");
+    fetch(`/api/lessons?level=${selectedLevel}&limit=200`, {
+      credentials: "include",
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((rows) => setLessons(Array.isArray(rows) ? rows : []))
+      .catch(() => setError("Could not load units for this level."))
+      .finally(() => setLoading(false));
+  }, [selectedLevel]);
+
+  const units = useMemo(() => {
+    const grouped = {};
+    lessons.forEach((item) => {
+      const key = item.unit_key || "core";
+      if (!grouped[key]) {
+        grouped[key] = {
+          unit_key: key,
+          unit_title: item.unit_title || "Core Phrases",
+          sort_order: Number(item.sort_order || 1),
+          usage_note:
+            item.usage_note || "Practice this unit in short daily sessions.",
+          items: [],
+        };
       }
-    };
-    load();
-  }, [level, lessonIds]);
+      grouped[key].items.push(item);
+    });
 
-  const handleSelect = async (key) => {
-    if (answered) return;
-    setSelected(key);
-    setAnswered(true);
+    return Object.values(grouped).sort((a, b) => a.sort_order - b.sort_order);
+  }, [lessons]);
 
-    const q = questions[current];
-    const isCorrect = key === q.correct_option;
+  const currentUnit = useMemo(
+    () => units.find((u) => u.unit_key === selectedUnitKey) || null,
+    [units, selectedUnitKey],
+  );
 
-    if (isCorrect) {
-      setShowFeedback("correct");
-    } else {
-      setShowFeedback("wrong");
-      const newMistakes = mistakes + 1;
-      setMistakes(newMistakes);
-      // Deduct heart via API
+  const currentBatch = useMemo(() => {
+    if (!currentUnit) return [];
+    const start = batchIndex * BATCH_SIZE;
+    return currentUnit.items.slice(start, start + BATCH_SIZE);
+  }, [currentUnit, batchIndex]);
+
+  const recallPrompt = currentBatch[0] || null;
+
+  const currentCheckpointQuestion =
+    checkpointQuestions[checkpointCurrent] || null;
+
+  const resetUnitFlow = () => {
+    setPhase("intro");
+    setBatchIndex(0);
+    setRecallInput("");
+    setRecallFeedback(null);
+    setMistakes(0);
+    setHearts(MAX_HEARTS);
+    setCheckpointQuestions([]);
+    setCheckpointCurrent(0);
+    setCheckpointSelected(null);
+    setCheckpointAnswered(false);
+  };
+
+  const beginUnit = (unitKey) => {
+    setSelectedUnitKey(unitKey);
+    resetUnitFlow();
+  };
+
+  const submitRecall = async () => {
+    if (!recallPrompt) return;
+
+    const normalizedInput = normalizeText(recallInput);
+    const accepted = [normalizeText(recallPrompt.english_text)].filter(Boolean);
+
+    const ok = accepted.some(
+      (ans) => normalizedInput === ans || normalizedInput.includes(ans),
+    );
+    if (ok) {
+      setRecallFeedback({ ok: true, text: "Nice recall. Keep going." });
+      return;
+    }
+
+    setRecallFeedback({
+      ok: false,
+      text: `Expected: ${recallPrompt.english_text}`,
+    });
+    setMistakes((m) => m + 1);
+
+    try {
+      const res = await fetch("/api/lesson/wrong_answer", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lesson_id: recallPrompt.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHearts(data.hearts ?? hearts);
+      }
+    } catch {
+      setHearts((h) => Math.max(0, h - 1));
+    }
+  };
+
+  const continueAfterRecall = async () => {
+    const isLastBatch =
+      currentUnit && (batchIndex + 1) * BATCH_SIZE >= currentUnit.items.length;
+
+    if (!isLastBatch) {
+      setBatchIndex((b) => b + 1);
+      setRecallInput("");
+      setRecallFeedback(null);
+      setPhase("learn");
+      return;
+    }
+
+    if (!currentUnit) return;
+    const lessonIds = currentUnit.items.map((i) => i.id);
+    try {
+      const res = await fetch(
+        `/api/quizzes?level=${selectedLevel}&lesson_ids=${lessonIds.join(",")}&limit=8`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error();
+      const rows = await res.json();
+      const dedup = [];
+      const seen = new Set();
+      rows.forEach((q) => {
+        const key = normalizeText(q.question_text);
+        if (!seen.has(key)) {
+          seen.add(key);
+          dedup.push(q);
+        }
+      });
+      setCheckpointQuestions(dedup.slice(0, 5));
+      setCheckpointCurrent(0);
+      setCheckpointSelected(null);
+      setCheckpointAnswered(false);
+      setPhase("checkpoint");
+    } catch {
+      setError("Could not load checkpoint questions.");
+    }
+  };
+
+  const submitCheckpointAnswer = async (key) => {
+    if (checkpointAnswered || !currentCheckpointQuestion) return;
+    setCheckpointSelected(key);
+    setCheckpointAnswered(true);
+
+    if (key !== currentCheckpointQuestion.correct_option) {
+      setMistakes((m) => m + 1);
       try {
         const res = await fetch("/api/lesson/wrong_answer", {
           method: "POST",
           credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quiz_id: currentCheckpointQuestion.id,
+            lesson_id: currentCheckpointQuestion.lesson_id,
+          }),
         });
         if (res.ok) {
           const data = await res.json();
-          setHearts(data.hearts);
-        } else {
-          setHearts((h) => Math.max(0, h - 1));
+          setHearts(data.hearts ?? hearts);
         }
       } catch {
         setHearts((h) => Math.max(0, h - 1));
@@ -102,490 +246,410 @@ const PracticeSection = ({ level, lessonIds, onComplete }) => {
     }
   };
 
-  const handleNext = async () => {
-    const nextIndex = current + 1;
-    if (nextIndex >= questions.length) {
-      // Lesson complete — call API
-      try {
-        const res = await fetch("/api/lesson/complete", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mistakes, level }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          onComplete(data);
-        } else {
-          onComplete({ xp_earned: 0, streak: 0, level: 1, mistakes });
-        }
-      } catch {
-        onComplete({ xp_earned: 0, streak: 0, level: 1, mistakes });
-      }
-    } else {
-      setCurrent(nextIndex);
-      setSelected(null);
-      setAnswered(false);
-      setShowFeedback(null);
+  const nextCheckpoint = async () => {
+    const isLast = checkpointCurrent + 1 >= checkpointQuestions.length;
+    if (!isLast) {
+      setCheckpointCurrent((n) => n + 1);
+      setCheckpointSelected(null);
+      setCheckpointAnswered(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/lesson/complete", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level: selectedLevel,
+          mistakes,
+          unit_key: currentUnit?.unit_key,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const result = await res.json();
+      setCompleteResult(result);
+      setStatsRefresh((n) => n + 1);
+      setPhase("done");
+    } catch {
+      setCompleteResult({ xp_earned: 0, streak: 0, level: 1 });
+      setPhase("done");
     }
   };
 
-  if (loading)
-    return (
-      <p style={{ textAlign: "center", color: "#888", marginTop: 40 }}>
-        Loading practice questions...
-      </p>
-    );
-  if (error)
-    return (
-      <p style={{ textAlign: "center", color: "#dc3545", marginTop: 40 }}>
-        {error}
-      </p>
-    );
-  if (questions.length === 0)
-    return (
-      <p style={{ textAlign: "center", color: "#888", marginTop: 40 }}>
-        No practice questions available yet for this level.
-      </p>
-    );
-
-  const q = questions[current];
-  const optionMap = {
-    A: q.option_a,
-    B: q.option_b,
-    C: q.option_c,
-    D: q.option_d,
-  };
-  const progress = Math.round((current / questions.length) * 100);
-
-  return (
-    <div className="practice-container">
-      {/* Hearts + Progress */}
-      <div className="practice-topbar">
-        <div className="practice-hearts">
-          {Array.from({ length: MAX_HEARTS }).map((_, i) => (
-            <span
-              key={i}
-              className={`ph-heart ${i < hearts ? "full" : "empty"}`}
-            >
-              <Heart
-                size={16}
-                fill={i < hearts ? "#ff4d6d" : "none"}
-                stroke={i < hearts ? "#ff4d6d" : "#bbb"}
-                strokeWidth={1.5}
-              />
-            </span>
-          ))}
-        </div>
-        <div className="practice-progress-wrap">
-          <div className="practice-progress-bar">
-            <div
-              className="practice-progress-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="practice-counter">
-            {current + 1} / {questions.length}
-          </span>
-        </div>
-      </div>
-
-      {/* Feedback banner */}
-      {showFeedback && (
-        <div className={`practice-feedback ${showFeedback}`}>
-          {showFeedback === "correct"
-            ? "Correct! Great job!"
-            : `Incorrect! The answer was ${q.correct_option}: ${optionMap[q.correct_option]}`}
-        </div>
-      )}
-
-      {/* Question card */}
-      <div className="exercises-content">
-        <div className="exercise-item">
-          <div className="question-text">
-            <span
-              style={{
-                color: "#6c757d",
-                fontSize: "13px",
-                display: "block",
-                marginBottom: "8px",
-              }}
-            >
-              Question {current + 1}
-            </span>
-            {q.question_text}
-          </div>
-          <div className="option-container">
-            {OPTION_KEYS.map((key) => {
-              let badge = null;
-              if (answered) {
-                if (key === q.correct_option)
-                  badge = <span className="correct-badge">✓ Correct</span>;
-                else if (key === selected && key !== q.correct_option)
-                  badge = <span className="incorrect-badge">✗ Wrong</span>;
-              }
-              return (
-                <label
-                  key={key}
-                  className="option-label"
-                  onClick={() => handleSelect(key)}
-                >
-                  <input
-                    type="radio"
-                    name="option"
-                    checked={selected === key}
-                    onChange={() => {}}
-                    disabled={answered}
-                  />
-                  <span>
-                    <strong>{key}.</strong> {optionMap[key]}
-                  </span>
-                  {badge}
-                </label>
-              );
-            })}
-          </div>
-
-          {/* Explanation */}
-          {answered && q.explanation && (
-            <div className="practice-explanation">{q.explanation}</div>
-          )}
-        </div>
-
-        {answered && (
-          <button className="practice-next-btn" onClick={handleNext}>
-            {current + 1 === questions.length
-              ? "Finish Lesson"
-              : "Next Question →"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ── Main Lessons component ───────────────────────────────────────────────────
-const Lessons = () => {
-  const [selectedLevel, setSelectedLevel] = useState(null);
-  const [activeTab, setActiveTab] = useState("words");
-  const [lessons, setLessons] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [completeResult, setCompleteResult] = useState(null);
-  const [statsRefresh, setStatsRefresh] = useState(0);
-  const [levelStats, setLevelStats] = useState({});
-
-  // Fetch per-level XP stats for curriculum cards
-  useEffect(() => {
-    fetch("/api/lesson/level-stats", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((data) => setLevelStats(data))
-      .catch(() => {});
-  }, [statsRefresh]);
-
-  // Fetch lessons when a level is selected
-  useEffect(() => {
-    if (!selectedLevel) return;
-
-    const fetchLessons = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch(
-          `/api/lessons?level=${selectedLevel}&limit=100`,
-          { credentials: "include" },
-        );
-        if (!res.ok) throw new Error("Failed to fetch lessons");
-        const data = await res.json();
-        setLessons(data);
-      } catch {
-        setError("Could not load lessons. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLessons();
-  }, [selectedLevel]);
-
-  const words = lessons.filter((l) => l.item_type === "word");
-  const sentences = lessons.filter((l) => l.item_type === "sentence");
-
-  const handlePracticeComplete = (result) => {
-    setCompleteResult(result);
+  const onContinueFromModal = () => {
+    setCompleteResult(null);
+    setSelectedUnitKey(null);
+    setPhase("intro");
     setStatsRefresh((n) => n + 1);
   };
 
-  const handleModalContinue = () => {
-    setCompleteResult(null);
-    setSelectedLevel(null);
-    setLessons([]);
-    setActiveTab("words");
-  };
-
-  // â”€â”€â”€ Lesson Detail View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  if (selectedLevel) {
-    const meta = LEVEL_META[selectedLevel];
+  if (!selectedLevel) {
     return (
       <div className="lessons-container">
-        {/* Completion modal */}
-        {completeResult && (
-          <LessonCompleteModal
-            result={completeResult}
-            onContinue={handleModalContinue}
-          />
-        )}
-
-        {/* Header */}
-        <div className="lesson-header">
-          <button
-            onClick={() => {
-              setSelectedLevel(null);
-              setLessons([]);
-            }}
-          >
-            ←
-          </button>
-          <div>
-            <p style={{ color: meta.color, fontWeight: 600, marginBottom: 4 }}>
-              {meta.label} Level
-            </p>
-            <h2>
-              {selectedLevel.charAt(0).toUpperCase() + selectedLevel.slice(1)}{" "}
-              Lessons
-            </h2>
-            <p>{meta.description}</p>
-          </div>
+        <div className="curriculum-header">
+          <h1>Guided Curriculum</h1>
+          <p>
+            Learn in units, recall immediately, then review weak items later.
+          </p>
         </div>
 
-        {/* Tabs */}
-        <div className="tabs">
-          <button
-            className={activeTab === "words" ? "active" : ""}
-            onClick={() => setActiveTab("words")}
-          >
-            Words ({words.length})
-          </button>
-          <button
-            className={activeTab === "sentences" ? "active" : ""}
-            onClick={() => setActiveTab("sentences")}
-          >
-            Sentences ({sentences.length})
-          </button>
-          <button
-            className={activeTab === "practice" ? "active" : ""}
-            onClick={() => setActiveTab("practice")}
-          >
-            Practice
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="lesson-content">
-          {activeTab === "practice" ? (
-            <PracticeSection
-              key={selectedLevel}
-              level={selectedLevel}
-              lessonIds={lessons.map((l) => l.id)}
-              onComplete={handlePracticeComplete}
-            />
-          ) : (
-            <>
-              {loading && (
-                <p
-                  style={{ textAlign: "center", color: "#888", marginTop: 40 }}
-                >
-                  Loading lessons...
-                </p>
-              )}
-              {error && (
-                <p
-                  style={{
-                    textAlign: "center",
-                    color: "#dc3545",
-                    marginTop: 40,
-                  }}
-                >
-                  {error}
-                </p>
-              )}
-              {!loading && !error && (
-                <div className="reading-content">
-                  {(activeTab === "words" ? words : sentences).map((item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1fr",
-                        alignItems: "center",
-                        padding: "14px 20px",
-                        marginBottom: "10px",
-                        borderRadius: "10px",
-                        background: "white",
-                        border: "1px solid #e0e0e0",
-                        gap: "10px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          color: "#1a1a2e",
-                          fontSize: "15px",
-                        }}
-                      >
-                        {item.english_text}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "18px",
-                          color: "#103562",
-                          fontWeight: 600,
-                          textAlign: "center",
-                        }}
-                      >
-                        {item.newari_text}
-                      </span>
-                      <span
-                        style={{
-                          color: "#6c757d",
-                          fontSize: "14px",
-                          fontStyle: "italic",
-                          textAlign: "right",
-                        }}
-                      >
-                        {item.romanized_text || "—"}
-                      </span>
-                    </div>
-                  ))}
-                  {!loading &&
-                    (activeTab === "words" ? words : sentences).length ===
-                      0 && (
-                      <p
-                        style={{
-                          textAlign: "center",
-                          color: "#888",
-                          marginTop: 40,
-                        }}
-                      >
-                        No {activeTab} found for this level.
-                      </p>
-                    )}
-
-                  {/* Prompt to practice */}
-                  {!loading &&
-                    (activeTab === "words" ? words : sentences).length > 0 && (
-                      <div className="practice-prompt-banner">
-                        <span>Ready to test yourself?</span>
-                        <button onClick={() => setActiveTab("practice")}>
-                          Start Practice
-                        </button>
-                      </div>
-                    )}
+        <div className="lessons-grid">
+          {LEVELS.map((level, index) => {
+            const meta = LEVEL_META[level];
+            const stats = levelStats[level] || {};
+            return (
+              <div key={level} className="lesson-card">
+                <div className="lesson-number" style={{ color: meta.color }}>
+                  Level {index + 1}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // â”€â”€â”€ Curriculum View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  return (
-    <div className="lessons-container">
-      <div className="curriculum-header">
-        <h1>Curriculum</h1>
-        <p>A structured path to mastering the Bhaktapur dialect.</p>
-      </div>
-
-      <div className="lessons-grid">
-        {LEVELS.map((level, index) => {
-          const meta = LEVEL_META[level];
-          const stats = levelStats[level] || {};
-          const xpEarned = stats.lesson_xp_earned || 0;
-          const completions = stats.lessons_completed || 0;
-          return (
-            <div key={level} className="lesson-card">
-              <div className="lesson-number" style={{ color: meta.color }}>
-                Lesson {index + 1}
-              </div>
-              <h3>
-                {level.charAt(0).toUpperCase() + level.slice(1)} — {meta.label}
-              </h3>
-              <p>{meta.description}</p>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "8px",
-                  marginBottom: "16px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <span
-                  style={{
-                    background: "#f0f4ff",
-                    color: "#103562",
-                    padding: "4px 10px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                  }}
-                >
-                  Words & Sentences
-                </span>
-                <span
-                  style={{
-                    background: "#f0f4ff",
-                    color: meta.color,
-                    padding: "4px 10px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    textTransform: "capitalize",
-                  }}
-                >
+                <h3>
+                  {level.charAt(0).toUpperCase() + level.slice(1)} -{" "}
                   {meta.label}
-                </span>
-                {xpEarned > 0 && (
+                </h3>
+                <p>{meta.description}</p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginBottom: 16,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      background: "#f0f4ff",
+                      color: "#103562",
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {stats.lessons_completed || 0} units done
+                  </span>
                   <span
                     style={{
                       background: "#fff8e1",
                       color: "#e6a817",
                       padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
+                      borderRadius: 20,
+                      fontSize: 12,
                       fontWeight: 700,
                     }}
                   >
-                    {xpEarned} XP earned
+                    {stats.lesson_xp_earned || 0} XP earned
                   </span>
-                )}
-                {completions > 0 && (
-                  <span
-                    style={{
-                      background: "#e8f5e9",
-                      color: "#28a745",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {completions}x completed
-                  </span>
-                )}
+                </div>
+                <button onClick={() => setSelectedLevel(level)}>
+                  Open Guided Units
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedLevel(level);
-                  setActiveTab("words");
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const levelMeta = LEVEL_META[selectedLevel];
+
+  if (!selectedUnitKey) {
+    return (
+      <div className="lessons-container">
+        <div className="lesson-header">
+          <button onClick={() => setSelectedLevel(null)}>←</button>
+          <div>
+            <p
+              style={{
+                color: levelMeta.color,
+                fontWeight: 600,
+                marginBottom: 4,
+              }}
+            >
+              {levelMeta.label} Level
+            </p>
+            <h2>Choose a Unit</h2>
+            <p>{levelMeta.description}</p>
+          </div>
+        </div>
+
+        {loading && (
+          <p style={{ textAlign: "center", color: "#666" }}>Loading units...</p>
+        )}
+        {error && (
+          <p style={{ textAlign: "center", color: "#dc3545" }}>{error}</p>
+        )}
+
+        {!loading && !error && (
+          <div className="lessons-grid">
+            {units.map((unit) => {
+              const progress = unitProgress.find(
+                (u) =>
+                  u.level === selectedLevel && u.unit_key === unit.unit_key,
+              );
+              const isUnlocked = progress
+                ? Boolean(progress.is_unlocked)
+                : unit.sort_order === 1;
+              const isCompleted = progress
+                ? Boolean(progress.is_completed)
+                : false;
+              return (
+                <div
+                  key={unit.unit_key}
+                  className="lesson-card"
+                  style={{ opacity: isUnlocked ? 1 : 0.55 }}
+                >
+                  <div
+                    className="lesson-number"
+                    style={{ color: levelMeta.color }}
+                  >
+                    Unit {unit.sort_order}
+                  </div>
+                  <h3>{unit.unit_title}</h3>
+                  <p>{unit.usage_note}</p>
+                  <p style={{ marginTop: -6, marginBottom: 16, fontSize: 13 }}>
+                    {unit.items.length} items ·{" "}
+                    {isCompleted ? "Completed" : "Not completed"}
+                  </p>
+                  <button
+                    disabled={!isUnlocked}
+                    onClick={() => beginUnit(unit.unit_key)}
+                  >
+                    {isUnlocked
+                      ? isCompleted
+                        ? "Review Unit"
+                        : "Start Unit"
+                      : "Locked"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="lessons-container">
+      {completeResult && (
+        <LessonCompleteModal
+          result={completeResult}
+          onContinue={onContinueFromModal}
+        />
+      )}
+
+      <div className="lesson-header">
+        <button
+          onClick={() => {
+            setSelectedUnitKey(null);
+            resetUnitFlow();
+          }}
+        >
+          ←
+        </button>
+        <div>
+          <p
+            style={{ color: levelMeta.color, fontWeight: 600, marginBottom: 4 }}
+          >
+            {levelMeta.label} · {currentUnit?.unit_title}
+          </p>
+          <h2>
+            {phase === "intro" && "Unit Intro"}
+            {phase === "learn" && "Learn"}
+            {phase === "recall" && "Try Now"}
+            {phase === "checkpoint" && "Checkpoint"}
+            {phase === "done" && "Completed"}
+          </h2>
+          <p>{currentUnit?.usage_note}</p>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          {Array.from({ length: MAX_HEARTS }).map((_, i) => (
+            <Heart
+              key={i}
+              size={18}
+              fill={i < hearts ? "#ff4d6d" : "none"}
+              stroke={i < hearts ? "#ff4d6d" : "#bbb"}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="lesson-content">
+        {phase === "intro" && (
+          <div className="reading-content">
+            <p>
+              This unit has {currentUnit?.items.length || 0} items. You will
+              learn them in small batches, recall right away, then pass a short
+              checkpoint.
+            </p>
+            <button onClick={() => setPhase("learn")}>Start Learning</button>
+          </div>
+        )}
+
+        {phase === "learn" && (
+          <div className="reading-content">
+            <p style={{ marginBottom: 18 }}>
+              Batch {batchIndex + 1} of{" "}
+              {Math.max(
+                1,
+                Math.ceil((currentUnit?.items.length || 0) / BATCH_SIZE),
+              )}
+            </p>
+            {currentBatch.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  marginBottom: 10,
+                  borderRadius: 10,
+                  border: "1px solid #e0e0e0",
+                  background: "#fff",
+                  gap: 8,
                 }}
               >
-                {completions > 0 ? "Practice Again" : "Start Lesson"}
+                <strong>{item.english_text}</strong>
+                <span
+                  style={{
+                    textAlign: "center",
+                    color: "#103562",
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.newari_text}
+                </span>
+                <span
+                  style={{
+                    textAlign: "right",
+                    color: "#6c757d",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {item.romanized_text || "-"}
+                </span>
+              </div>
+            ))}
+            <button onClick={() => setPhase("recall")}>Try Now</button>
+          </div>
+        )}
+
+        {phase === "recall" && recallPrompt && (
+          <div className="exercises-content">
+            <h3>Recall Prompt</h3>
+            <div className="exercise-item">
+              <p>
+                Type the English meaning of:{" "}
+                <strong>{recallPrompt.newari_text}</strong>
+              </p>
+              {recallPrompt.romanized_text && (
+                <p style={{ color: "#6c757d", marginTop: -4 }}>
+                  Romanized hint: {recallPrompt.romanized_text}
+                </p>
+              )}
+              <input
+                value={recallInput}
+                onChange={(e) => setRecallInput(e.target.value)}
+                placeholder="Type in English"
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 8,
+                  border: "1px solid #ddd",
+                }}
+              />
+              {recallFeedback && (
+                <p
+                  style={{
+                    color: recallFeedback.ok ? "#28a745" : "#dc3545",
+                    marginTop: 10,
+                  }}
+                >
+                  {recallFeedback.text}
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="practice-next-btn" onClick={submitRecall}>
+                Check Answer
+              </button>
+              <button
+                className="practice-next-btn"
+                onClick={continueAfterRecall}
+              >
+                Continue
               </button>
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {phase === "checkpoint" && currentCheckpointQuestion && (
+          <div className="exercises-content">
+            <h3>Unit Checkpoint</h3>
+            <div className="exercise-item">
+              <div className="question-text">
+                Question {checkpointCurrent + 1} of {checkpointQuestions.length}
+              </div>
+              <p style={{ marginBottom: 16 }}>
+                {currentCheckpointQuestion.question_text}
+              </p>
+              <div className="option-container">
+                {OPTION_KEYS.map((key) => {
+                  const text =
+                    currentCheckpointQuestion[`option_${key.toLowerCase()}`];
+                  let badge = null;
+                  if (checkpointAnswered) {
+                    if (key === currentCheckpointQuestion.correct_option) {
+                      badge = <span className="correct-badge">Correct</span>;
+                    } else if (key === checkpointSelected) {
+                      badge = <span className="incorrect-badge">Wrong</span>;
+                    }
+                  }
+                  return (
+                    <label
+                      key={key}
+                      className="option-label"
+                      onClick={() => submitCheckpointAnswer(key)}
+                    >
+                      <input
+                        type="radio"
+                        checked={checkpointSelected === key}
+                        onChange={() => {}}
+                        disabled={checkpointAnswered}
+                      />
+                      <span>
+                        <strong>{key}.</strong> {text}
+                      </span>
+                      {badge}
+                    </label>
+                  );
+                })}
+              </div>
+              {checkpointAnswered && currentCheckpointQuestion.explanation && (
+                <div className="practice-explanation">
+                  {currentCheckpointQuestion.explanation}
+                </div>
+              )}
+            </div>
+
+            {checkpointAnswered && (
+              <button className="practice-next-btn" onClick={nextCheckpoint}>
+                {checkpointCurrent + 1 === checkpointQuestions.length
+                  ? "Finish Unit"
+                  : "Next Question"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {phase === "checkpoint" && checkpointQuestions.length === 0 && (
+          <p style={{ textAlign: "center", color: "#666" }}>
+            No checkpoint available for this unit yet.
+          </p>
+        )}
       </div>
     </div>
   );
