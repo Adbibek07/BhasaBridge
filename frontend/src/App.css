@@ -1,18 +1,17 @@
-.App {
-  text-align: center;
-}
-
+/* ── Shell Layout ─────────────────────────────── */
 .top-header {
   position: fixed;
   top: 0;
-  left: 20%;
+  left: var(--sidebar-width);
   right: 0;
-  height: 56px;
-  background: transparent;
+  height: 58px;
+  background: rgba(245, 244, 241, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--content-border);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 30px;
+  padding: 0 32px;
   z-index: 99;
 }
 

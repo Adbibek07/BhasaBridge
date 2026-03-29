@@ -53,11 +53,13 @@ def _get_or_create_level_progress(cursor, user_id, level):
         (user_id, level),
     )
     row = cursor.fetchone()
-    if not row:
-        cursor.execute(
-            'INSERT INTO user_level_progress (user_id, level) VALUES (%s, %s)',
-            (user_id, level),
-        )
+    if row:
+        return row['id']
+
+    cursor.execute(
+        'INSERT INTO user_level_progress (user_id, level) VALUES (%s, %s)',
+        (user_id, level),
+    )
     return cursor.lastrowid
 
 
@@ -81,12 +83,36 @@ def _ensure_user_unit_progress(cursor, user_id, level):
             '''
             INSERT INTO user_unit_progress (user_id, level, unit_key, unit_title, is_unlocked)
             VALUES (%s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE unit_title=VALUES(unit_title)
+            ON DUPLICATE KEY UPDATE
+                unit_title=VALUES(unit_title),
+                is_unlocked=GREATEST(is_unlocked, VALUES(is_unlocked))
             ''',
             (user_id, level, unit['unit_key'], unit['unit_title'], 1 if index == 0 else 0),
         )
 
     return units
+
+
+def _is_review_unlocked(cursor, user_id):
+    cursor.execute(
+        '''
+        SELECT
+            COALESCE(SUM(lessons_completed), 0) AS lessons_completed,
+            (
+                SELECT COUNT(*)
+                FROM user_unit_progress
+                WHERE user_id=%s AND is_completed=1
+            ) AS completed_units
+        FROM user_level_progress
+        WHERE user_id=%s
+        ''',
+        (user_id, user_id),
+    )
+    row = cursor.fetchone() or {}
+    return max(
+        int(row.get('lessons_completed') or 0),
+        int(row.get('completed_units') or 0),
+    ) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +222,15 @@ def review_next():
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute('USE Bhasabridge')
 
+        review_unlocked = _is_review_unlocked(cursor, user_id)
+        if not review_unlocked:
+            return jsonify({
+                'count': 0,
+                'items': [],
+                'review_unlocked': False,
+                'message': 'Complete your first lesson to unlock Review Loop.',
+            }), 200
+
         cursor.execute(
             '''
             SELECT rq.id AS review_id,
@@ -218,6 +253,7 @@ def review_next():
             LEFT JOIN quiz q ON q.id = rq.quiz_id
             LEFT JOIN lesson l ON l.id = COALESCE(rq.lesson_id, q.lesson_id)
             WHERE rq.user_id=%s
+              AND rq.quiz_id IS NOT NULL
               AND rq.is_mastered=0
               AND rq.due_at <= NOW()
             ORDER BY rq.due_at ASC
@@ -226,7 +262,11 @@ def review_next():
             (user_id, limit),
         )
         rows = cursor.fetchall()
-        return jsonify({'count': len(rows), 'items': rows}), 200
+        return jsonify({
+            'count': len(rows),
+            'items': rows,
+            'review_unlocked': True,
+        }), 200
     finally:
         cursor.close()
         conn.close()
@@ -238,15 +278,20 @@ def review_submit():
     user_id = session['user_id']
     data = request.json or {}
     review_id = data.get('review_id')
-    is_correct = bool(data.get('is_correct'))
+    is_correct = data.get('is_correct')
 
     if not review_id:
         return jsonify({'Status': 'review_id is required'}), 400
+    if not isinstance(is_correct, bool):
+        return jsonify({'Status': 'is_correct must be a boolean'}), 400
 
     conn = connect_db()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute('USE Bhasabridge')
+
+        if not _is_review_unlocked(cursor, user_id):
+            return jsonify({'Status': 'Review is locked until first lesson is completed'}), 403
 
         cursor.execute(
             'SELECT * FROM user_review_queue WHERE id=%s AND user_id=%s',
@@ -350,48 +395,89 @@ def study_guide():
             _ensure_user_unit_progress(cursor, user_id, lvl)
         conn.commit()
 
-        cursor.execute(
-            '''
-            SELECT COUNT(*) AS review_due
-            FROM user_review_queue
-            WHERE user_id=%s AND is_mastered=0 AND due_at <= NOW()
-            ''',
-            (user_id,),
-        )
-        review_due = int((cursor.fetchone() or {}).get('review_due') or 0)
+        review_unlocked = _is_review_unlocked(cursor, user_id)
+
+        if review_unlocked:
+            cursor.execute(
+                '''
+                SELECT COUNT(*) AS review_due
+                FROM user_review_queue
+                WHERE user_id=%s
+                  AND quiz_id IS NOT NULL
+                  AND is_mastered=0
+                  AND due_at <= NOW()
+                ''',
+                (user_id,),
+            )
+            review_due = int((cursor.fetchone() or {}).get('review_due') or 0)
+
+            cursor.execute(
+                '''
+                SELECT l.level, l.unit_key, l.unit_title, COUNT(*) AS weak_count
+                FROM user_review_queue rq
+                LEFT JOIN quiz q ON q.id = rq.quiz_id
+                LEFT JOIN lesson l ON l.id = COALESCE(rq.lesson_id, q.lesson_id)
+                WHERE rq.user_id=%s
+                  AND rq.quiz_id IS NOT NULL
+                  AND rq.is_mastered=0
+                GROUP BY l.level, l.unit_key, l.unit_title
+                ORDER BY weak_count DESC
+                LIMIT 4
+                ''',
+                (user_id,),
+            )
+            weak_topics = cursor.fetchall()
+        else:
+            review_due = 0
+            weak_topics = []
 
         cursor.execute(
             '''
-            SELECT l.level, l.unit_key, l.unit_title, COUNT(*) AS weak_count
-            FROM user_review_queue rq
-            LEFT JOIN quiz q ON q.id = rq.quiz_id
-            LEFT JOIN lesson l ON l.id = COALESCE(rq.lesson_id, q.lesson_id)
-            WHERE rq.user_id=%s AND rq.is_mastered=0
-            GROUP BY l.level, l.unit_key, l.unit_title
-            ORDER BY weak_count DESC
-            LIMIT 4
-            ''',
-            (user_id,),
-        )
-        weak_topics = cursor.fetchall()
-
-        cursor.execute(
-            '''
-            SELECT level, unit_key, unit_title, is_unlocked, is_completed, mastery_score, last_activity
-            FROM user_unit_progress
-            WHERE user_id=%s
-            ORDER BY FIELD(level, 'easy', 'intermediate', 'hard'), is_completed ASC, last_activity DESC
+            SELECT
+                uup.level,
+                uup.unit_key,
+                uup.unit_title,
+                uup.is_unlocked,
+                uup.is_completed,
+                uup.mastery_score,
+                uup.last_activity,
+                meta.sort_order
+            FROM user_unit_progress uup
+            LEFT JOIN (
+                SELECT level, unit_key, MIN(sort_order) AS sort_order
+                FROM lesson
+                GROUP BY level, unit_key
+            ) meta
+              ON meta.level = uup.level
+             AND meta.unit_key = uup.unit_key
+            WHERE uup.user_id=%s
+            ORDER BY FIELD(uup.level, 'easy', 'intermediate', 'hard'), meta.sort_order ASC
             ''',
             (user_id,),
         )
         units = cursor.fetchall()
 
-        continue_unit = next((u for u in units if u['is_unlocked'] and not u['is_completed']), None)
+        continue_candidates = [
+            u for u in units if u['is_unlocked'] and not u['is_completed']
+        ]
+        continue_unit = None
+        if continue_candidates:
+            continue_unit = sorted(
+                continue_candidates,
+                key=lambda unit: (
+                    unit['last_activity'] is None,
+                    -(unit['last_activity'].timestamp()) if unit['last_activity'] else 0,
+                    VALID_LEVELS.index(unit['level']),
+                    unit.get('sort_order') or 999,
+                ),
+            )[0]
+
         new_lesson = next((u for u in units if not u['is_unlocked']), None)
 
         return jsonify({
             'continue_unit': continue_unit,
             'review_due': review_due,
+            'review_unlocked': review_unlocked,
             'new_lesson': new_lesson,
             'weak_topics': weak_topics,
             'units': units,

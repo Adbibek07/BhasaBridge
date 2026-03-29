@@ -70,6 +70,12 @@ def login():
 		session['user_name'] = user['name']
 		return jsonify({'Status': 'Login Success', 'Username': user['name']}), 200
 	return jsonify({'Status':'Invalid Credentials'}),401
+
+
+@auth.route('/logout', methods=['POST'])
+def logout():
+	session.clear()
+	return jsonify({'Status': 'Logged out'}), 200
 	
 @auth.route('/request_reset',methods=['POST'])
 def request_reset():

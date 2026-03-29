@@ -4,13 +4,15 @@ import "./NavigationBar.css";
 import {
   LayoutDashboard,
   LucideLibrary,
+  RotateCcw,
   BookCheck,
   LogOut,
 } from "lucide-react";
 
 const navLinks = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { name: "Lesson", icon: LucideLibrary, path: "/lessons" },
+  { name: "Lessons", icon: LucideLibrary, path: "/lessons" },
+  { name: "Review", icon: RotateCcw, path: "/review" },
   { name: "Quiz", icon: BookCheck, path: "/quiz" },
 ];
 
@@ -18,20 +20,32 @@ function NavigationBar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Even if the request fails, clear local state and return to login.
+    } finally {
+      localStorage.removeItem("username");
+      localStorage.removeItem("token");
+      navigate("/login");
+    }
   };
 
   return (
     <div className="left-sidebar">
       <div className="logo-div">
         <img src="/bhasabridge_logo.png" alt="Logo" className="Logo" />
-        <span>
+        <div className="logo-copy">
+          <span>
           <span style={{ color: "#103562" }}>Bhasa</span>
           <span style={{ color: "#5bbac6" }}>Bridge</span>
-        </span>
+          </span>
+          <small>Learn Nepal Bhasa with guided practice</small>
+        </div>
       </div>
 
       <div className="nav-container">

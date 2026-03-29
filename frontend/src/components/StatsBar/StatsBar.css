@@ -1,79 +1,105 @@
+/* ── Top Stats Bar ────────────────────────────────────── */
 .stats-bar {
-    display: flex;
-    align-items: center;
-    gap: 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .sb-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Divider between groups */
+.sb-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--content-border);
+  flex-shrink: 0;
 }
 
 /* Streak */
+.sb-streak {
+  gap: 5px;
+  background: #fff5f0;
+  border: 1px solid #ffe0d0;
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+
 .sb-streak .sb-flame-icon {
-    color: #ff6b35;
-    fill: #ff6b35;
-    flex-shrink: 0;
+  color: #e8581c;
+  flex-shrink: 0;
 }
 
 .sb-streak .sb-value {
-    font-weight: 700;
-    color: #ff6b35;
-    font-size: 1rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #e8581c;
+  line-height: 1;
 }
 
 /* Hearts */
 .sb-hearts {
-    gap: 2px;
+  gap: 3px;
+  background: #fff0f2;
+  border: 1px solid #ffd6db;
+  padding: 5px 11px;
+  border-radius: 999px;
 }
 
 .sb-heart {
-    line-height: 1;
-    display: flex;
-    align-items: center;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  transition: transform 0.15s ease;
 }
 
 .sb-heart.empty {
-    opacity: 0.25;
+  opacity: 0.22;
 }
 
-/* XP bar */
+/* XP / Level group */
 .sb-xp {
-    flex: 1;
-    gap: 8px;
-    justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0faff;
+  border: 1px solid #c8eaff;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
 }
 
 .sb-level-badge {
-    background: #1cb0f6;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    white-space: nowrap;
+  background: var(--teal);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
 }
 
 .sb-xp-bar {
-    flex: 1;
-    height: 8px;
-    background: #e5e5e5;
-    border-radius: 4px;
-    overflow: hidden;
-    min-width: 60px;
+  width: 72px;
+  height: 6px;
+  background: #d8eef9;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .sb-xp-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #58cc02, #89e219);
-    border-radius: 4px;
-    transition: width 0.6s ease;
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), #3ab8c8);
+  border-radius: 4px;
+  transition: width 0.55s ease;
 }
 
 .sb-xp-text {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #103562;
-    white-space: nowrap;
-}
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal-dark);
+  white-space: nowrap;
+}

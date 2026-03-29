@@ -1,16 +1,128 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Devanagari:wght@400;600;700&display=swap');
 
+:root {
+  --primary-color: #58CC02;
+  --primary-shadow: #58A700;
+  --secondary-color: #1CB0F6;
+  --secondary-shadow: #1899D6;
+  --accent-color: #FFC800;
+  --accent-shadow: #D3A700;
+  --danger-color: #FF4B4B;
+  --danger-shadow: #EA2B2B;
+  --bg-color: #f5f4f1;
+  --surface-color: #ffffff;
+  --surface-hover: #f0ede8;
+  --border-color: #e8e4de;
+  --text-main: #1a1a1a;
+  --text-muted: #8a857e;
+  --text-light: #e5e5e5;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-full: 9999px;
+  --font-main: 'Nunito', sans-serif;
+  --font-devanagari: 'Noto Serif Devanagari', serif;
 
-body {
-  margin: 0;
-  font-family: 'Poppins', 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
-  background: #eaeaea;
+  /* App-shell palette — inheriting from the Landing page DNA */
+  --sidebar-bg: #0a1628;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --sidebar-text: rgba(255,255,255,0.5);
+  --sidebar-text-active: #ffffff;
+  --sidebar-accent: #5bbac6;
+  --sidebar-accent-bg: rgba(91,186,198,0.13);
+  --sidebar-hover-bg: rgba(255,255,255,0.055);
+  --sidebar-width: 240px;
+
+  /* Content area */
+  --content-bg: #f5f4f1;
+  --content-surface: #ffffff;
+  --content-border: #e8e4de;
+  --content-text: #1a1a1a;
+  --content-muted: #7a7570;
+
+  /* Brand colors */
+  --teal: #5bbac6;
+  --teal-dark: #3a9aaa;
+  --gold: #d4a843;
+  --gold-light: #e8c068;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+body {
+  background: var(--content-bg);
+  color: var(--content-text);
+  font-family: var(--font-main);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *:before, *:after { box-sizing: inherit; }
+
+h1, h2, h3, h4, h5, h6 { font-weight: 800; margin: 0; }
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+  font-weight: 700;
+  transition: opacity .2s;
+}
+a:hover { opacity: 0.8; }
+
+/* Newari / Devanagari script — gets its own font */
+.newari-script {
+  font-family: var(--font-devanagari);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Universal Buttons */
+button, .btn {
+  font-family: var(--font-main);
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  cursor: pointer;
+  padding: 12px 22px;
+  font-size: 15px;
+  border: none;
+  transition: all 0.18s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  box-shadow: 0 4px 0 var(--primary-shadow);
+  background: var(--primary-color);
+  color: white;
+}
+button:active:not(:disabled), .btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--primary-shadow);
+}
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--primary-shadow);
+}
+button:disabled {
+  background: var(--border-color);
+  box-shadow: 0 4px 0 #ccc9c3;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-secondary {
+  background: var(--secondary-color);
+  box-shadow: 0 4px 0 var(--secondary-shadow);
+}
+
+/* Cards */
+.card, .stat-card, .lesson-card, .quiz-card {
+  background: var(--content-surface);
+  border: 1.5px solid var(--content-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.card:hover, .stat-card:hover, .lesson-card:hover, .quiz-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+  border-color: #ccc9c3;
 }

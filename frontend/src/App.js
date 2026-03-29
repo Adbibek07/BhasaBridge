@@ -6,6 +6,7 @@ import StatsBar from './components/StatsBar/StatsBar';
 import Dashboard from './components/Dashboard/Dashboard';
 import Lessons from './components/Lessons/Lessons';
 import Quiz from './components/Quiz/Quiz';
+import ReviewLoop from './components/ReviewLoop/ReviewLoop';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/Landing/Landing';
 
@@ -52,6 +53,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Quiz />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/review"
+          element={
+            <ProtectedRoute>
+              <ReviewLoop />
             </ProtectedRoute>
           }
         />

@@ -266,6 +266,7 @@ def list_quizzes():
     level = request.args.get('level')
     lesson_id = request.args.get('lesson_id')
     lesson_ids_raw = request.args.get('lesson_ids')  # comma-separated list of lesson IDs
+    unique_by_lesson = str(request.args.get('unique_by_lesson', '')).lower() in ['1', 'true', 'yes']
     limit = int(request.args.get('limit', 50))
     offset = int(request.args.get('offset', 0))
 
@@ -302,11 +303,26 @@ def list_quizzes():
             LEFT JOIN lesson l ON l.id=q.lesson_id
             {where_clause}
             ORDER BY FIELD(q.level, 'easy', 'intermediate', 'hard'), q.id ASC
-            LIMIT %s OFFSET %s
         '''
-        params.extend([limit, offset])
-        cursor.execute(query, params)
+        query_params = list(params)
+        if not unique_by_lesson:
+            query += '\n            LIMIT %s OFFSET %s\n        '
+            query_params.extend([limit, offset])
+
+        cursor.execute(query, query_params)
         rows = cursor.fetchall()
+
+        if unique_by_lesson:
+            seen_lessons = set()
+            deduped_rows = []
+            for row in rows:
+                key = row.get('lesson_id')
+                if key in seen_lessons:
+                    continue
+                seen_lessons.add(key)
+                deduped_rows.append(row)
+            rows = deduped_rows[offset:offset + limit]
+
         return jsonify(rows), 200
     finally:
         cursor.close()

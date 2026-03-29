@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Quiz.css";
 
 const DIFFICULTIES = ["easy", "intermediate", "hard"];
@@ -24,6 +25,8 @@ const DIFFICULTY_META = {
 const OPTION_KEYS = ["A", "B", "C", "D"];
 
 const Quiz = () => {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState("hub");
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -32,10 +35,17 @@ const Quiz = () => {
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [studyGuide, setStudyGuide] = useState(null);
 
-  // Fetch quiz questions when difficulty is selected
   useEffect(() => {
-    if (!selectedDifficulty) return;
+    fetch("/api/progress/study-guide", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setStudyGuide(data))
+      .catch(() => setStudyGuide(null));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDifficulty || mode !== "practice") return;
 
     const fetchQuiz = async () => {
       setLoading(true);
@@ -48,7 +58,6 @@ const Quiz = () => {
         if (!res.ok) throw new Error("Failed to fetch quiz");
         const data = await res.json();
 
-        // ✅ Deduplicate by question_text (catches same question with different ids)
         const seen = new Set();
         const unique = data.filter((q) => {
           const key = q.question_text.trim().toLowerCase();
@@ -57,9 +66,8 @@ const Quiz = () => {
           return true;
         });
 
-        const shuffled = unique.sort(() => Math.random() - 0.5);
-        setQuestions(shuffled);
-      } catch (e) {
+        setQuestions(unique.sort(() => Math.random() - 0.5));
+      } catch {
         setError("Could not load quiz. Please try again.");
       } finally {
         setLoading(false);
@@ -67,18 +75,34 @@ const Quiz = () => {
     };
 
     fetchQuiz();
-  }, [selectedDifficulty]);
+  }, [mode, selectedDifficulty]);
 
-  const handleDifficultySelect = (difficulty) => {
-    setSelectedDifficulty(difficulty);
+  const reviewUnlocked = Boolean(studyGuide?.review_unlocked);
+  const reviewDue = studyGuide?.review_due || 0;
+
+  const resetPracticeRun = () => {
     setCurrentQuestion(0);
     setSelectedAnswer(null);
     setScore(0);
     setShowResult(false);
+    setError("");
+  };
+
+  const openDifficultyMenu = () => {
+    resetPracticeRun();
+    setSelectedDifficulty(null);
+    setQuestions([]);
+    setMode("difficulty");
+  };
+
+  const handleDifficultySelect = (difficulty) => {
+    setSelectedDifficulty(difficulty);
+    resetPracticeRun();
+    setMode("practice");
   };
 
   const handleAnswerSelect = (optionKey) => {
-    if (selectedAnswer !== null) return; // already answered
+    if (selectedAnswer !== null) return;
     setSelectedAnswer(optionKey);
     if (optionKey === questions[currentQuestion].correct_option) {
       setScore((prev) => prev + 1);
@@ -88,43 +112,75 @@ const Quiz = () => {
   const handleNextQuestion = () => {
     if (currentQuestion + 1 >= questions.length) {
       setShowResult(true);
-    } else {
-      setCurrentQuestion((prev) => prev + 1);
-      setSelectedAnswer(null);
+      return;
     }
+
+    setCurrentQuestion((prev) => prev + 1);
+    setSelectedAnswer(null);
   };
 
   const handleRetry = () => {
-    setCurrentQuestion(0);
-    setSelectedAnswer(null);
-    setScore(0);
-    setShowResult(false);
-    // ✅ Re-shuffle without duplicates
-    setQuestions((prev) => {
-      const unique = [...new Map(prev.map((q) => [q.id, q])).values()];
-      return unique.sort(() => Math.random() - 0.5);
-    });
+    resetPracticeRun();
+    setQuestions((prev) => [...prev].sort(() => Math.random() - 0.5));
   };
 
-  const handleBackToMenu = () => {
-    setSelectedDifficulty(null);
-    setQuestions([]);
-    setCurrentQuestion(0);
-    setSelectedAnswer(null);
-    setScore(0);
-    setShowResult(false);
-    setError("");
-  };
-
-  // ─── Difficulty Selection View ────────────────────────────────────────────
-  if (!selectedDifficulty) {
+  if (mode === "hub") {
     return (
       <div className="quiz-container">
         <div className="quiz-header">
-          <h1>Quiz</h1>
-          <p style={{ color: "#6c757d", fontSize: "16px", marginTop: 8 }}>
-            Test your knowledge of the Bhaktapur Newari dialect.
+          <h1>Practice Hub</h1>
+          <p>
+            Choose the kind of practice you want right now: due review for
+            memory, or free practice for extra exposure.
           </p>
+        </div>
+
+        <div className="quiz-mode-grid">
+          <div className="quiz-mode-card review">
+            <span className="quiz-mode-pill">Spaced Review</span>
+            <h3>Review Loop</h3>
+            <p>
+              Work through items that are due now so the phrases you already met
+              do not fade out of memory.
+            </p>
+            <div className="quiz-mode-meta">
+              {reviewUnlocked
+                ? `${reviewDue} item${reviewDue === 1 ? "" : "s"} due now`
+                : "Unlocks after your first completed guided unit"}
+            </div>
+            <button
+              onClick={() => navigate(reviewUnlocked ? "/review" : "/lessons")}
+            >
+              {reviewUnlocked ? "Open Review Loop" : "Start Guided Lesson"}
+            </button>
+          </div>
+
+          <div className="quiz-mode-card practice">
+            <span className="quiz-mode-pill">Extra Practice</span>
+            <h3>Free Practice</h3>
+            <p>
+              Run a lightweight multiple-choice round by difficulty whenever you
+              want more reps outside the guided curriculum.
+            </p>
+            <div className="quiz-mode-meta">
+              Great for short warmups, confidence checks, and quick revision.
+            </div>
+            <button onClick={openDifficultyMenu}>Choose Practice Level</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "difficulty") {
+    return (
+      <div className="quiz-container">
+        <div className="quiz-header">
+          <button className="quiz-back-link" onClick={() => setMode("hub")}>
+            Back to Practice Hub
+          </button>
+          <h1>Free Practice</h1>
+          <p>Pick a level and do a quick confidence round.</p>
         </div>
 
         <div className="difficulty-grid">
@@ -137,37 +193,17 @@ const Quiz = () => {
                 onClick={() => handleDifficultySelect(level)}
               >
                 <span
+                  className="quiz-status-chip"
                   style={{
-                    display: "inline-block",
-                    background: meta.color + "20",
+                    background: `${meta.color}18`,
                     color: meta.color,
-                    padding: "4px 12px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    marginBottom: "12px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
                   }}
                 >
                   {meta.label}
                 </span>
                 <h3>{level.charAt(0).toUpperCase() + level.slice(1)}</h3>
                 <p>{meta.description}</p>
-                <button
-                  style={{
-                    background: "#103562",
-                    color: "white",
-                    border: "none",
-                    padding: "10px 20px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
-                >
-                  Start Quiz →
-                </button>
+                <button>Start Free Practice</button>
               </div>
             );
           })}
@@ -176,92 +212,74 @@ const Quiz = () => {
     );
   }
 
-  // ─── Loading / Error ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div
-        className="quiz-container"
-        style={{ justifyContent: "center", alignItems: "center" }}
-      >
-        <p style={{ color: "#888", fontSize: "18px" }}>Loading quiz...</p>
+      <div className="quiz-container quiz-centered-state">
+        <p>Loading your practice round...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div
-        className="quiz-container"
-        style={{ justifyContent: "center", alignItems: "center" }}
-      >
-        <p style={{ color: "#dc3545", fontSize: "16px" }}>{error}</p>
-        <button
-          onClick={handleBackToMenu}
-          style={{ marginTop: 16, cursor: "pointer" }}
-        >
-          Back to Menu
+      <div className="quiz-container quiz-centered-state">
+        <p className="quiz-error-text">{error}</p>
+        <button className="quiz-back-link" onClick={openDifficultyMenu}>
+          Back to Levels
         </button>
       </div>
     );
   }
 
-  // ─── Result View ──────────────────────────────────────────────────────────
+  if (!questions.length) {
+    return (
+      <div className="quiz-container quiz-centered-state">
+        <p>No practice questions are available for this level yet.</p>
+        <button className="quiz-back-link" onClick={openDifficultyMenu}>
+          Back to Levels
+        </button>
+      </div>
+    );
+  }
+
   if (showResult) {
     const percentage = Math.round((score / questions.length) * 100);
     const meta = DIFFICULTY_META[selectedDifficulty];
     return (
       <div className="quiz-container">
         <div className="quiz-result">
-          <h2>Quiz Complete! 🎉</h2>
-          <p style={{ color: "#6c757d", marginBottom: 24 }}>
-            {selectedDifficulty.charAt(0).toUpperCase() +
-              selectedDifficulty.slice(1)}{" "}
-            Level —{" "}
-            <span style={{ color: meta.color, fontWeight: 600 }}>
-              {meta.label}
-            </span>
-          </p>
-
+          <span
+            className="quiz-status-chip"
+            style={{ background: `${meta.color}18`, color: meta.color }}
+          >
+            {meta.label}
+          </span>
+          <h2>Free Practice Complete</h2>
           <div className="score">
-            <span
-              style={{ fontSize: "64px", fontWeight: 700, color: "#103562" }}
-            >
+            <span className="quiz-score-value">
               {score}/{questions.length}
             </span>
-            <p style={{ fontSize: "20px", color: "#6c757d", marginTop: 8 }}>
-              {percentage}% Score
-            </p>
-            <p style={{ marginTop: 12, fontSize: "16px" }}>
+            <p>{percentage}% correct</p>
+            <p className="quiz-note">
               {percentage >= 80
-                ? "🌟 Excellent! You've mastered this level."
+                ? "Strong round. You are ready to push into harder recall."
                 : percentage >= 50
-                  ? "👍 Good effort! Keep practicing."
-                  : "📚 Keep studying and try again!"}
+                  ? "Solid effort. Another short round or a guided unit will help."
+                  : "Use guided lessons or due review first, then come back for another round."}
             </p>
           </div>
 
           <div className="result-actions">
-            <button onClick={handleRetry}>Retry Quiz</button>
-            <button onClick={handleBackToMenu}>Back to Menu</button>
+            <button onClick={handleRetry}>Retry This Level</button>
+            <button onClick={openDifficultyMenu}>Choose Another Level</button>
+            <button onClick={() => setMode("hub")}>Back to Practice Hub</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ─── Quiz Question View ───────────────────────────────────────────────────
   const current = questions[currentQuestion];
-
-  if (!current) {
-    return (
-      <div
-        className="quiz-container"
-        style={{ justifyContent: "center", alignItems: "center" }}
-      >
-        <p style={{ color: "#888", fontSize: "18px" }}>Loading question...</p>
-      </div>
-    );
-  }
   const meta = DIFFICULTY_META[selectedDifficulty];
   const optionMap = {
     A: current.option_a,
@@ -272,50 +290,31 @@ const Quiz = () => {
 
   return (
     <div className="quiz-container">
-      {/* Top Nav Bar */}
       <div className="quiz-nav">
-        <button onClick={handleBackToMenu}>← Back</button>
-        <span style={{ color: meta.color, fontWeight: 600 }}>
-          {meta.label} Level
+        <button onClick={openDifficultyMenu}>Back</button>
+        <span className="quiz-nav-level" style={{ color: meta.color }}>
+          {meta.label} Practice
         </span>
-        <span style={{ color: "#6c757d" }}>
+        <span className="quiz-nav-score">
           Score: {score}/{currentQuestion}
         </span>
       </div>
 
-      {/* Progress Bar */}
       <div className="quiz-progress">
-        <div
-          style={{
-            height: "6px",
-            background: "#e0e0e0",
-            borderRadius: "3px",
-            margin: "0 40px",
-          }}
-        >
+        <div className="quiz-progress-track">
           <div
+            className="quiz-progress-fill"
             style={{
-              height: "100%",
               width: `${((currentQuestion + 1) / questions.length) * 100}%`,
               background: meta.color,
-              borderRadius: "3px",
-              transition: "width 0.3s ease",
             }}
           />
         </div>
-        <p
-          style={{
-            textAlign: "right",
-            padding: "6px 40px 0",
-            color: "#888",
-            fontSize: "13px",
-          }}
-        >
+        <p>
           Question {currentQuestion + 1} of {questions.length}
         </p>
       </div>
 
-      {/* Question */}
       <div className="quiz-content">
         <div className="quiz-category">
           {selectedDifficulty.charAt(0).toUpperCase() +
@@ -331,6 +330,7 @@ const Quiz = () => {
               if (key === current.correct_option) className += " correct";
               else if (key === selectedAnswer) className += " incorrect";
             }
+
             return (
               <label
                 key={key}
@@ -352,44 +352,18 @@ const Quiz = () => {
           })}
         </div>
 
-        {/* Explanation */}
         {selectedAnswer !== null && current.explanation && (
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "12px 16px",
-              background: "#f0f7ff",
-              borderLeft: "4px solid #103562",
-              borderRadius: "6px",
-              color: "#103562",
-              fontSize: "14px",
-            }}
-          >
-            💡 {current.explanation}
-          </div>
+          <div className="quiz-explanation">{current.explanation}</div>
         )}
 
-        {/* Next Button */}
         <button
           className="next-button"
           disabled={selectedAnswer === null}
           onClick={handleNextQuestion}
-          style={{
-            marginTop: "24px",
-            background: selectedAnswer ? "#103562" : "#ccc",
-            color: "white",
-            border: "none",
-            padding: "12px 32px",
-            borderRadius: "8px",
-            fontSize: "16px",
-            fontWeight: 600,
-            cursor: selectedAnswer ? "pointer" : "not-allowed",
-            transition: "all 0.2s",
-          }}
         >
           {currentQuestion + 1 >= questions.length
             ? "See Results"
-            : "Next Question →"}
+            : "Next Question"}
         </button>
       </div>
     </div>

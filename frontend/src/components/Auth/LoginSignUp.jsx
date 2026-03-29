@@ -132,7 +132,7 @@ const LoginSignUp = () => {
           className="login-logo"
         />
         <div className="logo-text">
-          <span style={{ color: "#103562" }}>Bhasa</span>
+          <span style={{ color: "#ffffff" }}>Bhasa</span>
           <span style={{ color: "#5bbac6" }}>Bridge</span>
         </div>
       </div>
@@ -145,10 +145,11 @@ const LoginSignUp = () => {
         {message && (
           <div
             style={{
-              color: message.includes("successful") ? "green" : "#0d4e82",
+              color: message.includes("successful") ? "#5bbac6" : "#f4a261",
               textAlign: "center",
               marginTop: 10,
-              fontWeight: "500",
+              fontWeight: "600",
+              fontSize: "0.85rem",
             }}
           >
             {message}

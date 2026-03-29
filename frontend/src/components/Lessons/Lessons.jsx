@@ -34,6 +34,41 @@ const normalizeText = (v) =>
     .toLowerCase()
     .replace(/[\s.,!?;:]+/g, " ");
 
+const buildRecallPrompts = (batch) => {
+  const prompts = [];
+  batch.forEach((item) => {
+    prompts.push({
+      id: `${item.id}-to-en`,
+      lessonId: item.id,
+      direction: "Nepal Bhasa -> English",
+      promptText: item.newari_text,
+      hintText: item.romanized_text
+        ? `Romanized hint: ${item.romanized_text}`
+        : "",
+      placeholder: "Type in English",
+      expected: item.english_text,
+      acceptedAnswers: [normalizeText(item.english_text)].filter(Boolean),
+    });
+
+    prompts.push({
+      id: `${item.id}-from-en`,
+      lessonId: item.id,
+      direction: "English -> Nepal Bhasa or Romanized",
+      promptText: item.english_text,
+      hintText: "You can answer in script or romanized form.",
+      placeholder: "Type Nepal Bhasa or romanized",
+      expected: [item.newari_text, item.romanized_text]
+        .filter(Boolean)
+        .join(" / "),
+      acceptedAnswers: [
+        normalizeText(item.newari_text),
+        normalizeText(item.romanized_text),
+      ].filter(Boolean),
+    });
+  });
+  return prompts;
+};
+
 const Lessons = () => {
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [selectedUnitKey, setSelectedUnitKey] = useState(null);
@@ -48,9 +83,13 @@ const Lessons = () => {
   const [statsRefresh, setStatsRefresh] = useState(0);
 
   const [batchIndex, setBatchIndex] = useState(0);
+  const [recallPrompts, setRecallPrompts] = useState([]);
+  const [recallCurrent, setRecallCurrent] = useState(0);
+  const [recallPenalized, setRecallPenalized] = useState([]);
   const [recallInput, setRecallInput] = useState("");
   const [recallFeedback, setRecallFeedback] = useState(null);
   const [mistakes, setMistakes] = useState(0);
+  const [reviewItemsAdded, setReviewItemsAdded] = useState(0);
   const [hearts, setHearts] = useState(MAX_HEARTS);
 
   const [checkpointQuestions, setCheckpointQuestions] = useState([]);
@@ -120,17 +159,22 @@ const Lessons = () => {
     return currentUnit.items.slice(start, start + BATCH_SIZE);
   }, [currentUnit, batchIndex]);
 
-  const recallPrompt = currentBatch[0] || null;
+  const currentRecallPrompt = recallPrompts[recallCurrent] || null;
 
   const currentCheckpointQuestion =
     checkpointQuestions[checkpointCurrent] || null;
 
   const resetUnitFlow = () => {
+    setError("");
     setPhase("intro");
     setBatchIndex(0);
+    setRecallPrompts([]);
+    setRecallCurrent(0);
+    setRecallPenalized([]);
     setRecallInput("");
     setRecallFeedback(null);
     setMistakes(0);
+    setReviewItemsAdded(0);
     setHearts(MAX_HEARTS);
     setCheckpointQuestions([]);
     setCheckpointCurrent(0);
@@ -143,24 +187,101 @@ const Lessons = () => {
     resetUnitFlow();
   };
 
-  const submitRecall = async () => {
-    if (!recallPrompt) return;
+  const startRecallBatch = () => {
+    const prompts = buildRecallPrompts(currentBatch);
+    setRecallPrompts(prompts);
+    setRecallCurrent(0);
+    setRecallPenalized([]);
+    setRecallInput("");
+    setRecallFeedback(null);
+    setPhase("recall");
+  };
 
-    const normalizedInput = normalizeText(recallInput);
-    const accepted = [normalizeText(recallPrompt.english_text)].filter(Boolean);
+  const completeCurrentUnit = async (completionMode = "checkpoint") => {
+    let completion = null;
 
-    const ok = accepted.some(
-      (ans) => normalizedInput === ans || normalizedInput.includes(ans),
+    try {
+      const res = await fetch("/api/lesson/complete", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level: selectedLevel,
+          mistakes,
+          unit_key: currentUnit?.unit_key,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      completion = await res.json();
+    } catch {
+      completion = { xp_earned: 0, streak: 0, level: 1 };
+    }
+
+    let weakTopic = null;
+    try {
+      const guideRes = await fetch("/api/progress/study-guide", {
+        credentials: "include",
+      });
+      if (guideRes.ok) {
+        const guide = await guideRes.json();
+        weakTopic = (guide?.weak_topics || [])[0] || null;
+      }
+    } catch {
+      weakTopic = null;
+    }
+
+    const unitIndex = units.findIndex(
+      (u) => u.unit_key === currentUnit?.unit_key,
     );
+    const nextUnit = unitIndex >= 0 ? units[unitIndex + 1] || null : null;
+
+    setCompleteResult({
+      ...completion,
+      completion_mode: completionMode,
+      completed_unit_title: currentUnit?.unit_title || "Unit",
+      next_unit: nextUnit
+        ? {
+            unit_key: nextUnit.unit_key,
+            unit_title: nextUnit.unit_title,
+            level: selectedLevel,
+          }
+        : null,
+      review_items_added: reviewItemsAdded,
+      weak_topic: weakTopic,
+    });
+    setStatsRefresh((n) => n + 1);
+    setPhase("done");
+  };
+
+  const submitRecall = async () => {
+    if (!currentRecallPrompt) return;
+    const normalizedInput = normalizeText(recallInput);
+    if (!normalizedInput) {
+      setRecallFeedback({ ok: false, text: "Type an answer before checking." });
+      return;
+    }
+
+    const ok = currentRecallPrompt.acceptedAnswers.some(
+      (ans) => normalizedInput === ans,
+    );
+
     if (ok) {
-      setRecallFeedback({ ok: true, text: "Nice recall. Keep going." });
+      setRecallFeedback({
+        ok: true,
+        text: "Correct. Move to the next prompt.",
+      });
       return;
     }
 
     setRecallFeedback({
       ok: false,
-      text: `Expected: ${recallPrompt.english_text}`,
+      text: `Expected: ${currentRecallPrompt.expected}`,
     });
+
+    const alreadyPenalized = recallPenalized.includes(currentRecallPrompt.id);
+    if (alreadyPenalized) return;
+
+    setRecallPenalized((prev) => [...prev, currentRecallPrompt.id]);
     setMistakes((m) => m + 1);
 
     try {
@@ -168,15 +289,34 @@ const Lessons = () => {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lesson_id: recallPrompt.id }),
+        body: JSON.stringify({ lesson_id: currentRecallPrompt.lessonId }),
       });
       if (res.ok) {
         const data = await res.json();
         setHearts(data.hearts ?? hearts);
+        if (data.queued_for_review) {
+          setReviewItemsAdded((n) => n + 1);
+        }
+      } else {
+        setHearts((h) => Math.max(0, h - 1));
       }
     } catch {
       setHearts((h) => Math.max(0, h - 1));
     }
+  };
+
+  const nextRecallPrompt = async () => {
+    if (!currentRecallPrompt || !recallFeedback?.ok) return;
+
+    const isLastPrompt = recallCurrent + 1 >= recallPrompts.length;
+    if (!isLastPrompt) {
+      setRecallCurrent((n) => n + 1);
+      setRecallInput("");
+      setRecallFeedback(null);
+      return;
+    }
+
+    await continueAfterRecall();
   };
 
   const continueAfterRecall = async () => {
@@ -185,6 +325,9 @@ const Lessons = () => {
 
     if (!isLastBatch) {
       setBatchIndex((b) => b + 1);
+      setRecallPrompts([]);
+      setRecallCurrent(0);
+      setRecallPenalized([]);
       setRecallInput("");
       setRecallFeedback(null);
       setPhase("learn");
@@ -195,7 +338,7 @@ const Lessons = () => {
     const lessonIds = currentUnit.items.map((i) => i.id);
     try {
       const res = await fetch(
-        `/api/quizzes?level=${selectedLevel}&lesson_ids=${lessonIds.join(",")}&limit=8`,
+        `/api/quizzes?level=${selectedLevel}&lesson_ids=${lessonIds.join(",")}&unique_by_lesson=1&limit=8`,
         { credentials: "include" },
       );
       if (!res.ok) throw new Error();
@@ -203,19 +346,30 @@ const Lessons = () => {
       const dedup = [];
       const seen = new Set();
       rows.forEach((q) => {
-        const key = normalizeText(q.question_text);
+        const key = q.lesson_id
+          ? `lesson-${q.lesson_id}`
+          : normalizeText(q.question_text);
         if (!seen.has(key)) {
           seen.add(key);
           dedup.push(q);
         }
       });
+
+      if (!dedup.length) {
+        await completeCurrentUnit("recall_only");
+        return;
+      }
+
       setCheckpointQuestions(dedup.slice(0, 5));
       setCheckpointCurrent(0);
       setCheckpointSelected(null);
       setCheckpointAnswered(false);
       setPhase("checkpoint");
     } catch {
-      setError("Could not load checkpoint questions.");
+      setError(
+        "Checkpoint unavailable. Finishing this unit with recall-only completion.",
+      );
+      await completeCurrentUnit("recall_only");
     }
   };
 
@@ -239,6 +393,9 @@ const Lessons = () => {
         if (res.ok) {
           const data = await res.json();
           setHearts(data.hearts ?? hearts);
+          if (data.queued_for_review) {
+            setReviewItemsAdded((n) => n + 1);
+          }
         }
       } catch {
         setHearts((h) => Math.max(0, h - 1));
@@ -255,26 +412,7 @@ const Lessons = () => {
       return;
     }
 
-    try {
-      const res = await fetch("/api/lesson/complete", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          level: selectedLevel,
-          mistakes,
-          unit_key: currentUnit?.unit_key,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      const result = await res.json();
-      setCompleteResult(result);
-      setStatsRefresh((n) => n + 1);
-      setPhase("done");
-    } catch {
-      setCompleteResult({ xp_earned: 0, streak: 0, level: 1 });
-      setPhase("done");
-    }
+    await completeCurrentUnit("checkpoint");
   };
 
   const onContinueFromModal = () => {
@@ -458,7 +596,7 @@ const Lessons = () => {
           <h2>
             {phase === "intro" && "Unit Intro"}
             {phase === "learn" && "Learn"}
-            {phase === "recall" && "Try Now"}
+            {phase === "recall" && "Batch Recall"}
             {phase === "checkpoint" && "Checkpoint"}
             {phase === "done" && "Completed"}
           </h2>
@@ -481,8 +619,8 @@ const Lessons = () => {
           <div className="reading-content">
             <p>
               This unit has {currentUnit?.items.length || 0} items. You will
-              learn them in small batches, recall right away, then pass a short
-              checkpoint.
+              learn them in small batches, complete stricter recall in both
+              directions, then pass a short checkpoint.
             </p>
             <button onClick={() => setPhase("learn")}>Start Learning</button>
           </div>
@@ -498,62 +636,38 @@ const Lessons = () => {
               )}
             </p>
             {currentBatch.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  alignItems: "center",
-                  padding: "12px 16px",
-                  marginBottom: 10,
-                  borderRadius: 10,
-                  border: "1px solid #e0e0e0",
-                  background: "#fff",
-                  gap: 8,
-                }}
-              >
-                <strong>{item.english_text}</strong>
-                <span
-                  style={{
-                    textAlign: "center",
-                    color: "#103562",
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.newari_text}
-                </span>
-                <span
-                  style={{
-                    textAlign: "right",
-                    color: "#6c757d",
-                    fontStyle: "italic",
-                  }}
-                >
-                  {item.romanized_text || "-"}
-                </span>
+              <div key={item.id} className="word-row">
+                <span className="word-row-english">{item.english_text}</span>
+                <span className="word-row-newari newari-script">{item.newari_text}</span>
+                <span className="word-row-roman">{item.romanized_text || "—"}</span>
               </div>
             ))}
-            <button onClick={() => setPhase("recall")}>Try Now</button>
+            <button onClick={startRecallBatch}>Start Batch Recall</button>
           </div>
         )}
 
-        {phase === "recall" && recallPrompt && (
+        {phase === "recall" && currentRecallPrompt && (
           <div className="exercises-content">
-            <h3>Recall Prompt</h3>
+            <h3>Batch Recall</h3>
             <div className="exercise-item">
-              <p>
-                Type the English meaning of:{" "}
-                <strong>{recallPrompt.newari_text}</strong>
+              <div className="question-text">
+                Prompt {recallCurrent + 1} of {recallPrompts.length}
+              </div>
+              <p style={{ marginTop: -4, color: "var(--teal-dark)", fontWeight: 700 }}>
+                {currentRecallPrompt.direction}
               </p>
-              {recallPrompt.romanized_text && (
-                <p style={{ color: "#6c757d", marginTop: -4 }}>
-                  Romanized hint: {recallPrompt.romanized_text}
+              <p>
+                Recall for: <strong className="newari-script">{currentRecallPrompt.promptText}</strong>
+              </p>
+              {currentRecallPrompt.hintText && (
+                <p style={{ color: "var(--content-muted)", marginTop: -4 }}>
+                  {currentRecallPrompt.hintText}
                 </p>
               )}
               <input
                 value={recallInput}
                 onChange={(e) => setRecallInput(e.target.value)}
-                placeholder="Type in English"
+                placeholder={currentRecallPrompt.placeholder}
                 style={{
                   width: "100%",
                   padding: "12px",
@@ -562,12 +676,7 @@ const Lessons = () => {
                 }}
               />
               {recallFeedback && (
-                <p
-                  style={{
-                    color: recallFeedback.ok ? "#28a745" : "#dc3545",
-                    marginTop: 10,
-                  }}
-                >
+                <p className={recallFeedback.ok ? "recall-feedback-ok" : "recall-feedback-err"}>
                   {recallFeedback.text}
                 </p>
               )}
@@ -578,9 +687,12 @@ const Lessons = () => {
               </button>
               <button
                 className="practice-next-btn"
-                onClick={continueAfterRecall}
+                onClick={nextRecallPrompt}
+                disabled={!recallFeedback?.ok}
               >
-                Continue
+                {recallCurrent + 1 >= recallPrompts.length
+                  ? "Finish Batch Recall"
+                  : "Next Prompt"}
               </button>
             </div>
           </div>
@@ -646,9 +758,18 @@ const Lessons = () => {
         )}
 
         {phase === "checkpoint" && checkpointQuestions.length === 0 && (
-          <p style={{ textAlign: "center", color: "#666" }}>
-            No checkpoint available for this unit yet.
-          </p>
+          <div className="exercises-content">
+            <p style={{ textAlign: "center", color: "#666" }}>
+              No checkpoint available for this unit. You can still finish with
+              recall-only completion.
+            </p>
+            <button
+              className="practice-next-btn"
+              onClick={() => completeCurrentUnit("recall_only")}
+            >
+              Finish Unit from Recall
+            </button>
+          </div>
         )}
       </div>
     </div>

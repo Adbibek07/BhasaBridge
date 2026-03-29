@@ -18,6 +18,36 @@ def _db():
     return conn, cursor
 
 
+def _current_reward_snapshot(user_id):
+    conn, cursor = _db()
+    try:
+        cursor.execute(
+            "SELECT xp, streak, hearts, level FROM users WHERE id=%s",
+            (user_id,),
+        )
+        row = cursor.fetchone() or {}
+    finally:
+        cursor.close()
+        conn.close()
+
+    xp = row.get("xp") or 0
+    level = row.get("level") or 1
+    prev_xp = LEVEL_THRESHOLDS[level - 1] if level >= 1 else 0
+    next_xp = LEVEL_THRESHOLDS[level] if level < len(LEVEL_THRESHOLDS) else xp
+
+    return {
+        "xp_earned": 0,
+        "streak_bonus": 0,
+        "total_xp": xp,
+        "streak": row.get("streak") or 0,
+        "level": level,
+        "prev_level_xp": prev_xp,
+        "next_level_xp": next_xp,
+        "new_achievements": [],
+        "hearts": row.get("hearts") if row.get("hearts") is not None else MAX_HEARTS,
+    }
+
+
 # ── GET /api/user/stats ───────────────────────────────────────────────────────
 @gamification.route("/user/stats", methods=["GET"])
 @login_required
@@ -66,22 +96,45 @@ def complete_lesson():
     level    = data.get("level", "easy")
     unit_key = data.get("unit_key")
 
-    xp_type = "perfect_lesson" if mistakes == 0 else "lesson_complete"
-    result  = award_xp(user_id, xp_type)
+    already_completed = False
+    if unit_key:
+        conn, cursor = _db()
+        try:
+            cursor.execute(
+                """
+                SELECT is_completed
+                FROM user_unit_progress
+                WHERE user_id=%s AND level=%s AND unit_key=%s
+                """,
+                (user_id, level, unit_key),
+            )
+            unit_progress = cursor.fetchone()
+            already_completed = bool(unit_progress and unit_progress.get("is_completed"))
+        finally:
+            cursor.close()
+            conn.close()
+
+    if already_completed:
+        result = _current_reward_snapshot(user_id)
+    else:
+        xp_type = "perfect_lesson" if mistakes == 0 else "lesson_complete"
+        result = award_xp(user_id, xp_type)
 
     # Restore hearts after finishing a lesson
     restore_hearts(user_id)
     result["hearts"] = MAX_HEARTS
 
     # Track per-level lesson XP in user_level_progress
-    xp_earned = result.get("xp_earned", 0)
+    xp_earned = 0 if already_completed else result.get("xp_earned", 0)
+    mastery_score = max(0, 100 - mistakes * 20)
     conn, cursor = _db()
     try:
         cursor.execute(
             "SELECT id FROM user_level_progress WHERE user_id=%s AND level=%s",
             (user_id, level),
         )
-        if cursor.fetchone():
+        level_row = cursor.fetchone()
+        if level_row and not already_completed:
             cursor.execute(
                 """
                 UPDATE user_level_progress
@@ -92,14 +145,23 @@ def complete_lesson():
                 """,
                 (xp_earned, user_id, level),
             )
-        else:
+        elif not level_row:
             cursor.execute(
                 """
                 INSERT INTO user_level_progress
                     (user_id, level, lesson_xp_earned, lessons_completed, last_played_at)
-                VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
                 """,
-                (user_id, level, xp_earned),
+                (user_id, level, xp_earned, 0 if already_completed else 1),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE user_level_progress
+                SET last_played_at = CURRENT_TIMESTAMP
+                WHERE user_id=%s AND level=%s
+                """,
+                (user_id, level),
             )
 
         if unit_key:
@@ -126,7 +188,7 @@ def complete_lesson():
                         mastery_score=GREATEST(mastery_score, VALUES(mastery_score)),
                         last_activity=CURRENT_TIMESTAMP
                     ''',
-                    (user_id, level, unit_key, unit_row['unit_title'], max(0, 100 - mistakes * 20)),
+                    (user_id, level, unit_key, unit_row['unit_title'], mastery_score),
                 )
 
                 cursor.execute(
@@ -158,10 +220,12 @@ def complete_lesson():
         cursor.close()
         conn.close()
 
-    # Unlock first-lesson achievement
-    unlock_achievement(user_id, "first_lesson")
-    if mistakes == 0:
-        unlock_achievement(user_id, "perfect_lesson")
+    if not already_completed:
+        unlock_achievement(user_id, "first_lesson")
+        if mistakes == 0:
+            unlock_achievement(user_id, "perfect_lesson")
+
+    result["already_completed"] = already_completed
 
     return jsonify(result)
 
@@ -201,6 +265,7 @@ def wrong_answer():
     quiz_id = data.get("quiz_id")
     lesson_id = data.get("lesson_id")
     hearts  = deduct_heart(user_id)
+    queued_for_review = False
 
     conn, cursor = _db()
     try:
@@ -209,7 +274,10 @@ def wrong_answer():
             q = cursor.fetchone()
             lesson_id = q.get("lesson_id") if q else None
 
-        if quiz_id or lesson_id:
+        # Only quiz-backed review items are currently supported by the review UI.
+        # Lesson-only misses still deduct hearts, but are not enqueued until
+        # there is a dedicated lesson-review card shape on the frontend.
+        if quiz_id:
             cursor.execute(
                 '''
                 INSERT INTO user_review_queue (user_id, lesson_id, quiz_id, due_at, correct_streak, last_result, is_mastered)
@@ -224,11 +292,16 @@ def wrong_answer():
                 (user_id, lesson_id, quiz_id),
             )
             conn.commit()
+            queued_for_review = True
     finally:
         cursor.close()
         conn.close()
 
-    return jsonify({"hearts": hearts, "max_hearts": MAX_HEARTS})
+    return jsonify({
+        "hearts": hearts,
+        "max_hearts": MAX_HEARTS,
+        "queued_for_review": queued_for_review,
+    })
 
 
 # ── GET /api/leaderboard ──────────────────────────────────────────────────────
